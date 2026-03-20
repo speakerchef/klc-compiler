@@ -15,13 +15,18 @@
 #include <vector>
 
 enum class TokenType {
-    T_TYPE_INT,
-    T_TYPE_STR,
-    T_TYPE_BYTE,
-    T_DELIM_SEMI,
-    T_KW_EXIT,
-    T_KW_RETURN,
-    PARSE_ERROR,
+    LIT_INT,
+    LIT_STR,
+    DELIM_SEMI,
+    KW_EXIT,
+    KW_RETURN,
+    OP_EQUALS,
+    OP_PLUS,
+    OP_MINUS,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+    OP_POWER,
+    CLASS_ERROR,
 };
 
 typedef struct Token {
@@ -31,7 +36,7 @@ typedef struct Token {
 
 class Tokenizer {
   private:
-    [[nodiscard]] Token parse_token(std::string &buf) noexcept;
+    [[nodiscard]] Token classify_token(std::string &buf) noexcept;
 
   public:
     [[nodiscard]] std::vector<Token> tokenize(std::ifstream file);

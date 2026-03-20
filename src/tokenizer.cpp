@@ -1,12 +1,18 @@
 #include "tokenizer.hpp"
 #include <cassert>
 #include <cctype>
+#include <fstream>
+#include <string>
+#include <vector>
 
-[[nodiscard]] Token Tokenizer::parse_token(std::string &buf) noexcept {
+[[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
     Token tok{};
     if (buf == "exit") {
         tok = {.type = TokenType::KW_EXIT, .value = buf};
-
+        return tok;
+    }
+    if (buf == "return") {
+        tok = {.type = TokenType::KW_RETURN, .value = buf};
         return tok;
     }
 
@@ -36,13 +42,14 @@
         if (std::isalnum(ch)) {
             buf.push_back(ch);
         } else if (std::isspace(ch) && ch != '\n') {
-            assert(this->parse_token(buf).type != TokenType::CLASS_ERROR);
-            tokens.emplace_back(this->parse_token(buf));
+            assert(this->classify_token(buf).type != TokenType::CLASS_ERROR);
+            tokens.emplace_back(this->classify_token(buf));
             buf.clear();
         } else if (ch == ';') {
             if (!buf.empty()) {
-                assert(this->parse_token(buf).type != TokenType::CLASS_ERROR);
-                tokens.emplace_back(this->parse_token(buf));
+                assert(this->classify_token(buf).type !=
+                       TokenType::CLASS_ERROR);
+                tokens.emplace_back(this->classify_token(buf));
                 buf.clear();
             }
 

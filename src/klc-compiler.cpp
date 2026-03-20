@@ -1,5 +1,5 @@
-#include "include/tokenizer.cpp"
 #include "include/utils.hpp"
+#include "tokenizer.cpp"
 
 #include <cassert>
 #include <cctype>
