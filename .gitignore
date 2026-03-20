@@ -2,5 +2,6 @@
 .clang-format
 build/
 sandbox/*
-!sandbox/a.asm
+!sandbox/*.s
+!sandbox/*.asm
 .DS_Store
