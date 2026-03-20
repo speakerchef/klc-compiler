@@ -1,0 +1,6 @@
+.cache
+.clang-format
+build/
+sandbox/*
+!sandbox/a.asm
+.DS_Store
