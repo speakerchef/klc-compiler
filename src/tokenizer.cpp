@@ -1,7 +1,10 @@
 #include "tokenizer.hpp"
+#include "include/utils.hpp"
 #include <cassert>
 #include <cctype>
+#include <cstdlib>
 #include <fstream>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -10,8 +13,7 @@
     if (buf == "exit") {
         tok = {.type = TokenType::KW_EXIT, .value = buf};
         return tok;
-    }
-    if (buf == "return") {
+    } else if (buf == "return") {
         tok = {.type = TokenType::KW_RETURN, .value = buf};
         return tok;
     }
@@ -32,18 +34,24 @@
         return tok;
     }
 
-    return {.type = TokenType::CLASS_ERROR, .value = -1};
+    return {.type = TokenType::CLASS_ERROR, .value = buf};
 }
 [[nodiscard]] std::vector<Token> Tokenizer::tokenize(std::ifstream file) {
     char ch;
     std::string buf;
     std::vector<Token> tokens{};
+
     while (file.get(ch)) {
         if (std::isalnum(ch)) {
             buf.push_back(ch);
         } else if (std::isspace(ch) && ch != '\n') {
-            assert(this->classify_token(buf).type != TokenType::CLASS_ERROR);
-            tokens.emplace_back(this->classify_token(buf));
+            Token tok = this->classify_token(buf);
+            if (tok.type == TokenType::CLASS_ERROR) {
+                std::print(stderr, "Unknown Symbol: ");
+                print_variant(tok.value);
+                exit(EXIT_FAILURE);
+            }
+            tokens.emplace_back(tok);
             buf.clear();
         } else if (ch == ';') {
             if (!buf.empty()) {

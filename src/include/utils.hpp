@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <string_view>
+#include <variant>
 
 using std::string;
 
@@ -12,6 +14,12 @@ inline void rprintln(string fmt, R &r) {
     std::copy(r.begin(), r.end(),
               std::ostream_iterator<string>(std::cout, ", "));
     std::cout << fmt << std::endl;
+}
+
+template <typename T> inline void print_variant(T &val) {
+    std::visit([&](const auto &value) { 
+        std::println("`{}`", value); 
+    }, val);
 }
 
 // Constants
