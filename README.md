@@ -1,7 +1,7 @@
 # **KLC: KNOB-Lang-Compiler**
 
 ### *What is KNOB?* : **KNOB** is **K**ompiled **NOB**: k**N**ob-**O**riented-**B**inary
-- Simple toy compiler to compile the KNOB (.knv) language into asm.
+- This is a simple compiler project of mine to compile the KNOB (.knv) language into asm - a language I'm in the process of creating.
 *Why **.knv**?*: Yes, *.knb* would've made more sense BUT... everyone knows that the true perfect language will always prioritize ergonomics over reliability and standards that make sense. With that in mind, you *should* know it's easier to hit 'v' from the home-row than 'b' - thank me later.
 
 ### General language quirks and features:
