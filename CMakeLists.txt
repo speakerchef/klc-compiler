@@ -10,6 +10,7 @@ add_executable(klc
     ./src/klc-compiler.cpp
     ./src/tokenizer.cpp
     ./src/parser.cpp
+    ./src/code-generator.cpp
 )
 
 

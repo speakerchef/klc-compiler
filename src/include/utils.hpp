@@ -7,9 +7,15 @@
 
 using std::string;
 
+// Allows for clean handling of std::variant dispatch
+template <typename... T> struct Overload : T... {
+    using T::operator()...;
+};
+
+
+// print range
 template <std::ranges::range R>
     requires(!std::convertible_to<R, std::string_view>)
-// print range
 inline void rprintln(string fmt, R &r) {
     std::copy(r.begin(), r.end(),
               std::ostream_iterator<string>(std::cout, ", "));
@@ -17,9 +23,7 @@ inline void rprintln(string fmt, R &r) {
 }
 
 template <typename T> inline void print_variant(T &val) {
-    std::visit([&](const auto &value) { 
-        std::println("`{}`", value); 
-    }, val);
+    std::visit([&](const auto &value) { std::println("`{}`", value); }, val);
 }
 
 // Constants

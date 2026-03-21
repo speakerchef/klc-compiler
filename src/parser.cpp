@@ -1,16 +1,18 @@
 #include "parser.hpp"
+#include "code-generator.hpp"
 #include "tokenizer.hpp"
-#include "include/utils.hpp"
+#include "nodes.hpp"
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
 #include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
 
 // TODO: Make some sort of AST 
 // TODO: Helper function to check token validity for kw/op
-// TODO: Make queue for code generator from syntax tree
 
 Parser::Parser(std::vector<Token> toks, std::ofstream &osref) : 
     m_tokens(std::move(toks)), 
@@ -44,6 +46,7 @@ std::optional<Token> Parser::take(size_t offset) {
 
 void Parser::parse_tokens() {
     bool require_semi = false;
+    CodeGenerator generator(m_osref);
 
     while (peek(0).has_value()){
         const Token peeked = peek(0).value();
@@ -92,12 +95,11 @@ void Parser::parse_tokens() {
                             ecode = ec;
                         }
                     };
-                    std::visit(exit_code_v, peek(1).value().value); // consumes both exit and int tokens
+                    std::visit(exit_code_v, peek(1).value().value);
+
+                    generator.emit(SyntaxNode( NodeExit({ .exit_code = ecode }) ));
 
                     take(0);
-                    m_osref << "\tMOV x0, " << ecode << "\n";
-                    m_osref << "\tMOV x16, 1\n";
-                    m_osref << "\tBL _exit  \n";
                     require_semi = true;
                 }
                 break;
@@ -123,4 +125,3 @@ void Parser::parse_tokens() {
 
 
 }
-
