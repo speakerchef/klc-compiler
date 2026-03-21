@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     }
 
     std::ofstream o_stream("./gen_asm.s");
-    o_stream << ".global _start\n.align 4\n\t_start:\n";
+    o_stream << ".global _start\n.align 4\n_start:\n";
 
     // Tokenize
     // replace this with proper character traversal
@@ -42,8 +42,6 @@ int main(int argc, char **argv) {
 
     Parser parser(tokens, o_stream); 
 
-    // o_stream << "\n\tMOV x0, 69\nBL _exit";
-    o_stream << "\nBL _exit";
     o_stream.close();
 
     println("Successful Compilation!");

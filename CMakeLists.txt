@@ -13,4 +13,4 @@ add_executable(klc
 )
 
 
-target_compile_options(klc PRIVATE -Wall -Wextra -Wconversion -Wpedantic)
+target_compile_options(klc PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
