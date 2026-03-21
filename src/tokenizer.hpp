@@ -24,10 +24,8 @@ enum class TokenType {
     OP_EQUALS,
     OP_PLUS,
     OP_MINUS,
-    OP_MULTIPLY,
-    OP_DIVIDE,
-    OP_POWER,
     CLASS_ERROR,
+    VAR_INT,
 };
 
 typedef struct Token {

@@ -30,13 +30,13 @@ int main(int argc, char **argv) {
     o_stream << ".global _start\n.align 4\n_start:\n";
 
     auto visitor = [](const auto &value) { println("Token value: {}", value); };
-    for (const Token &tok : tokens) {
-        std::visit(visitor, tok.value);
-    }
     
     // Process
     Tokenizer tokenizer{};
     std::vector<Token> tokens = tokenizer.tokenize(std::move(file));
+    for (const Token &tok : tokens) {
+        std::visit(visitor, tok.value);
+    }
 
     Parser parser(tokens, o_stream); 
 
