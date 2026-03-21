@@ -6,16 +6,19 @@
 #include <fstream>
 #include <print>
 #include <string>
+#include <utility>
 #include <vector>
 
 [[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
     Token tok{};
 
     if (buf == "exit") {
-        tok = {.type = TokenType::KW_EXIT, .value = buf};
+        tok.type = TokenType::KW_EXIT;
+        tok.value.emplace<std::string>(buf);
         return tok;
     } else if (buf == "return") {
-        tok = {.type = TokenType::KW_RETURN, .value = buf};
+        tok.type = TokenType::KW_RETURN;
+        tok.value.emplace<std::string>(buf);
         return tok;
     }
 
@@ -27,11 +30,8 @@
     }
 
     if (!int_value.empty()) {
-        tok = {
-            .type = TokenType::LIT_INT,
-            .value = std::stoi(int_value),
-        };
-
+        tok.type = TokenType::LIT_INT;
+        tok.value.emplace<int>(std::move(std::stoi(int_value)));
         return tok;
     }
 
@@ -64,7 +64,7 @@
             // Given buf had a token and we parsed it,
             // we add the semi token separately
             tokens.emplace_back(
-                Token({.type = TokenType::DELIM_SEMI, .value = ch}));
+                Token({ .type = TokenType::DELIM_SEMI, .value = ch}));
         }
     }
     return tokens;

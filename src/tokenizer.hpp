@@ -20,6 +20,7 @@ enum class TokenType {
     DELIM_SEMI,
     KW_EXIT,
     KW_RETURN,
+    KW_LET,
     OP_EQUALS,
     OP_PLUS,
     OP_MINUS,
