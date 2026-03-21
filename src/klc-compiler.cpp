@@ -1,4 +1,5 @@
-#include "tokenizer.cpp"
+#include "parser.hpp"
+#include "include/utils.hpp"
 
 #include <cassert>
 #include <cctype>
@@ -25,7 +26,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    std::ofstream o_stream{};
+    std::ofstream o_stream("./gen_asm.s");
     o_stream << ".global _start\n.align 4\n\t_start:\n";
 
     // Tokenize
@@ -39,17 +40,22 @@ int main(int argc, char **argv) {
         std::visit(visitor, tok.value);
     }
 
-    o_stream << "\n\tMOV x0, 69\nBL _exit";
+    Parser parser(tokens, o_stream); 
+
+    // o_stream << "\n\tMOV x0, 69\nBL _exit";
+    o_stream << "\nBL _exit";
     o_stream.close();
+
+    println("Successful Compilation!");
 
     const char *assemble_cmd = "as -o ./gen_asm.o ./gen_asm.s";
     const char *linker_cmd =
         "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e "
-        "_start -o ../build/bin/gen_asm ./gen_asm.o";
-    const char *exec_cmd = "../build/bin/gen_asm; echo $?";
+        "_start -o ../build/gen_asm ./gen_asm.o";
+    const char *exec_cmd = "../build/gen_asm; echo $?";
 
-    // std::system(assemble_cmd);
-    // std::system(linker_cmd);
-    // std::system(exec_cmd);
+    std::system(assemble_cmd);
+    std::system(linker_cmd);
+    std::system(exec_cmd);
     // rprintln("", word_buffer);
 }
