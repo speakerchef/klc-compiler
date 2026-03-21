@@ -29,21 +29,18 @@ int main(int argc, char **argv) {
     std::ofstream o_stream("./gen_asm.s");
     o_stream << ".global _start\n.align 4\n_start:\n";
 
-    // Tokenize
-    // replace this with proper character traversal
-    Tokenizer tokenizer{};
-
-    std::vector<Token> tokens = tokenizer.tokenize(std::move(file));
-
     auto visitor = [](const auto &value) { println("Token value: {}", value); };
     for (const Token &tok : tokens) {
         std::visit(visitor, tok.value);
     }
+    
+    // Process
+    Tokenizer tokenizer{};
+    std::vector<Token> tokens = tokenizer.tokenize(std::move(file));
 
     Parser parser(tokens, o_stream); 
 
     o_stream.close();
-
     println("Successful Compilation!");
 
     const char *assemble_cmd = "as -o ./gen_asm.o ./gen_asm.s";
@@ -55,5 +52,4 @@ int main(int argc, char **argv) {
     std::system(assemble_cmd);
     std::system(linker_cmd);
     std::system(exec_cmd);
-    // rprintln("", word_buffer);
 }
