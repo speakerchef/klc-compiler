@@ -1,27 +1,41 @@
 #pragma once
 
-#include "nodes.hpp"
+#include "include/utils.hpp"
 #include "tokenizer.hpp"
 #include <cstddef>
 #include <type_traits>
 #include <unordered_map>
 
-struct SyntaxNode {
-  private:
-    std::variant<NodeExit, NodeIntVar> m_node;
+struct NodeExit {
+    int exit_code;
+};
 
+struct NodeIntVar {
+    int value;
+    std::string ident;
+    bool is_mutable;
+};
+
+struct NodeIntLit {
+    int value;
+};
+
+
+struct SyntaxNode {
   public:
-    SyntaxNode(std::variant<NodeExit, NodeIntVar> node)
+    SyntaxNode(std::variant<NodeExit, NodeIntVar, NodeIntLit> node)
     : m_node(std::move(node)) {}
-        
+    SyntaxNode();
+
     [[nodiscard]] inline TokenType get_node_type() const {
         auto node_typer = Overload{
             [](NodeExit) { return TokenType::KW_EXIT; },
-            [](NodeIntVar) { return TokenType::VAR_INT; }
+            [](NodeIntVar) { return TokenType::VAR_INT; },
+            [](NodeIntLit) { return TokenType::LIT_INT; }
         };
-
         return std::visit(node_typer, m_node);
     }
+
     [[nodiscard]] inline std::variant<NodeExit, NodeIntVar> get_node_value(TokenType ttype) const {
         if (ttype == TokenType::VAR_INT) {
             return NodeIntVar({ 
@@ -37,6 +51,7 @@ struct SyntaxNode {
         }
         return {};
     }
+
     inline void set_node_value(const auto &ref) {
         auto vis_setter = [&](const auto &val) {
             if constexpr (std::is_same_v<decltype(val), NodeIntVar>) {
@@ -45,15 +60,20 @@ struct SyntaxNode {
                 m_node = { .exit_code = val.exit_code }; 
             };
         };
-
         std::visit(vis_setter, ref);
     }
+
+  private:
+    std::variant<NodeExit, NodeIntVar, NodeIntLit> m_node;
+
+};
+
+struct NodeExpr {
+    SyntaxNode atom{};
+    std::unordered_map<std::string, NodeExpr> exprP{};
 };
 
 class SyntaxTree {
-  private:
-    std::unordered_map<std::string, SyntaxNode> m_nodes;
-
   public:
     inline void push_node(SyntaxNode node) {
         switch (node.get_node_type()) {
@@ -70,4 +90,8 @@ class SyntaxTree {
     [[nodiscard]] inline std::optional<SyntaxNode> get_node(const std::string &ident) const {
         return m_nodes.at(ident);
     }
+
+  private:
+    std::unordered_map<std::string, SyntaxNode> m_nodes;
+
 };

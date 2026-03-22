@@ -1,4 +1,1 @@
-let bigmac = 69;
-let squidward = 111;
-
-exit 11;
+let sum = 2 + 3;

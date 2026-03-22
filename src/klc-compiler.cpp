@@ -1,13 +1,11 @@
-#include "parser.hpp"
 #include "include/utils.hpp"
-
+#include "tokenizer.hpp"
 #include <cassert>
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
 #include <fstream>
 #include <print>
-#include <vector>
 
 using std::println;
 using std::string;
@@ -32,13 +30,13 @@ int main(int argc, char **argv) {
     auto visitor = [](const auto &value) { println("Token value: {}", value); };
     
     // Process
-    Tokenizer tokenizer{};
-    std::vector<Token> tokens = tokenizer.tokenize(std::move(file));
+    Tokenizer tokenizer{std::move(o_stream), std::move(file)};
+    std::vector<Token> tokens{tokenizer.get_tokens()};
     for (const Token &tok : tokens) {
         std::visit(visitor, tok.value);
     }
 
-    Parser parser(tokens, o_stream); 
+    // Parser parser(tokens, o_stream); 
 
     o_stream.close();
     println("Successful Compilation!");

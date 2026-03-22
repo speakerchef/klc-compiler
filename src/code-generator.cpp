@@ -1,5 +1,4 @@
 #include "code-generator.hpp"
-#include "nodes.hpp"
 #include "tokenizer.hpp"
 
 CodeGenerator::CodeGenerator(std::ofstream &os) : m_os(std::move(os)) {}
