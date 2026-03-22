@@ -83,22 +83,17 @@ void Parser::parse_tokens() {
                 if (!peek(1).has_value() || 
                     (peek(1).value().type != TokenType::LIT_INT &&
                     peek(1).value().type != TokenType::UNCLASSED_VAR_DEC)) {
-                    //TODO: Add check to see if duplicate variable name exists
                     std::println("Error: Required valid argument after `exit`");
 
                     std::println("DEBUG: Type Unclassed = {}", peek(1).value().type == TokenType::UNCLASSED_VAR_DEC);
                     exit(EXIT_FAILURE);
                 } else {
-                    if (!peek(2).has_value()) {
-                        std::println("Error: Missing `;`");
-                        exit(EXIT_FAILURE);
-                    }
-                    
                     switch (peek(1).value().type) {
                         case TokenType::UNCLASSED_VAR_DEC: {
-                            if (!peek(4).has_value() || peek(4).value().type != TokenType::DELIM_SEMI) {
+                            if (!peek(2).has_value() || 
+                                peek(2).value().type != TokenType::DELIM_SEMI) {
                                 std::println("Error: Missing `;` after declaration `{}`", 
-                                             std::get<std::string>(peek(1).value().value));
+                                             std::get<std::string>(peek(2).value().value));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -138,11 +133,11 @@ void Parser::parse_tokens() {
                                 std::println("Error: Missing `;` after declaration `{}`", ec_int_lit);
                                 exit(EXIT_FAILURE);
                             }
+
                             generator.emit(SyntaxNode( NodeExit({ .exit_code = ec_int_lit }) ));
 
                             pop();
                             require_semi = true;
-
                             break;
                         }
                         default: {
@@ -170,6 +165,13 @@ void Parser::parse_tokens() {
                     peek(3).value().type != TokenType::LIT_INT) {
                     std::println("Error: Required valid entry after variable declaration.");
                     exit(EXIT_FAILURE);
+                }
+
+                if (!peek(4).has_value() ||
+                    peek(4).value().type != TokenType::DELIM_SEMI) {
+                    std::println("Error: Missing `;` after `{}`.", std::get<int>(peek(3).value().value));
+                    exit(EXIT_FAILURE);
+
                 }
 
                 const auto ident = peek(1).value().value;

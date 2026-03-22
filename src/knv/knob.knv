@@ -1,4 +1,3 @@
 let booger = 55;
 let goober = 42;
-let jabroni = 55;
-exit jabroni;
+exit goober;
