@@ -11,7 +11,6 @@
 #include <variant>
 #include <vector>
 
-
 // TODO: Make some sort of AST 
 // TODO: Helper function to check token validity for kw/op
 
@@ -155,6 +154,7 @@ void Parser::parse_tokens() {
                     break;
                 }
             } 
+
             case TokenType::KW_LET: {
                 if (!peek(1).has_value() ||
                     peek(1).value().type != TokenType::UNCLASSED_VAR_DEC) {
