@@ -20,14 +20,14 @@ void CodeGenerator::emit() {
         if (call.get_node_type() == TokenType::KW_EXIT) {
             const int exit_code = 
                 std::get<NodeExit>(call
-                                   .get_node_value(TokenType::KW_EXIT)
+                                   .get_node_value()
                                    ).exit_code;
             m_os << "\tMOV x0, " << exit_code << '\n';
             m_os << "\tMOV x16, 1\n";
             m_os << "\tBL _exit  \n";
         }
         else if(call.get_node_type() == TokenType::VAR_INT) {
-            const auto var_int = std::get<NodeIntVar>(call.get_node_value(TokenType::VAR_INT));
+            const auto var_int = std::get<NodeIntVar>(call.get_node_value());
             m_os << "\tSUB sp, sp, 16\n";
             m_os << "\tMOV x20, " << var_int.value;
             m_os << " // ident: " << var_int.ident << '\n'; // dbg comment

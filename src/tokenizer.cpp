@@ -145,7 +145,7 @@ void Tokenizer::tokenize() {
                             SyntaxNode snode = tree_val.value();
                             ec_int_lit = std::get<NodeIntVar>(tree_val
                                 .value()
-                                .get_node_value(TokenType::VAR_INT)
+                                .get_node_value()
                             )   .value;
 
                             ast.push_node(SyntaxNode( 
@@ -259,12 +259,8 @@ void Tokenizer::tokenize() {
         }
     }
     
-   //boom 
     CodeGenerator generator{m_ofs, ast.get_call_stack(), ast.get_var_table()};
     generator.emit();
-
-    std::println("BOMBO");
-
 }
 
 /* */

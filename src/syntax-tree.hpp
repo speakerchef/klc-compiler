@@ -23,10 +23,9 @@ struct NodeIntLit {
     int value;
 };
 
-
 struct SyntaxNode {
   public:
-    SyntaxNode(std::variant<NodeExit, NodeIntVar, NodeIntLit, NodeLet> node)
+    SyntaxNode(std::variant<NodeExit, NodeLet, NodeIntVar, NodeIntLit> node)
     : m_node(std::move(node)) {}
     SyntaxNode();
 
@@ -40,35 +39,37 @@ struct SyntaxNode {
         return std::visit(node_typer, m_node);
     }
 
-    [[nodiscard]] inline std::variant<NodeExit, NodeIntVar> get_node_value(TokenType ttype) const {
-        if (ttype == TokenType::VAR_INT) {
-            return NodeIntVar({ 
-                .value = std::get<NodeIntVar>(m_node).value, 
-                .ident = std::get<NodeIntVar>(m_node).ident, 
-                .is_mutable = std::get<NodeIntVar>(m_node).is_mutable, 
-            });
-        }
-        else if (ttype == TokenType::KW_EXIT) {
-            return NodeExit({ 
-                .exit_code = std::get<NodeExit>(m_node).exit_code, 
-            });
-        }
-        return {};
+    [[nodiscard]] inline auto get_node_value() const {
+        auto getter_v = Overload {
+            [&](const NodeExit)   { return m_node; },
+            [&](const NodeLet)    { return m_node; },
+            [&](const NodeIntVar) { return m_node; },
+            [&](const NodeIntLit) { return m_node; },
+        };
+        return std::visit(getter_v, m_node);
     }
 
     inline void set_node_value(const auto &ref) {
-        auto vis_setter = [&](const auto &val) {
-            if constexpr (std::is_same_v<decltype(val), NodeIntVar>) {
-                m_node = { .value = val.value, .ident = val.ident, .is_immutable = val.is_immutable }; 
-            } else if constexpr (std::is_same_v<decltype(val), NodeExit>) {
+        auto setter_v = [&](const auto &val) {
+            using decay_t = std::decay<decltype(val)>;
+            if constexpr (std::is_same_v<decay_t, NodeExit>) {
                 m_node = { .exit_code = val.exit_code }; 
-            };
+            }
+            else if constexpr (std::is_same_v<decay_t, NodeLet>) {
+                m_node = {}; 
+            }
+            else if constexpr (std::is_same_v<decay_t, NodeIntVar>) {
+                m_node = { .value = val.value, .ident = val.ident, .is_immutable = val.is_immutable }; 
+            } 
+            else if constexpr (std::is_same_v<decay_t, NodeIntLit>) {
+                m_node = { .value = val.value }; 
+            }
         };
-        std::visit(vis_setter, ref);
+        std::visit(setter_v, ref);
     }
 
   private:
-    std::variant<NodeExit, NodeIntVar, NodeIntLit, NodeLet> m_node;
+    std::variant<NodeExit, NodeLet, NodeIntVar, NodeIntLit> m_node;
 
 };
 
@@ -82,7 +83,7 @@ class SyntaxTree {
     inline void push_node(SyntaxNode node) {
         switch (node.get_node_type()) {
             case TokenType::VAR_INT: {
-                NodeIntVar n = std::get<NodeIntVar>(node.get_node_value(TokenType::VAR_INT));
+                auto n = std::get<NodeIntVar>(node.get_node_value());
                 m_var_table.insert({
                     n.ident,
                     SyntaxNode(n)
@@ -102,7 +103,17 @@ class SyntaxTree {
                 m_call_stack.emplace_back(node);
                 break;
             }
-        }
+            case TokenType::DELIM_SEMI:
+            case TokenType::KW_RETURN:
+            case TokenType::KW_INT:
+            case TokenType::LIT_STR:
+            case TokenType::UNCLASSED_VAR_DEC:
+            case TokenType::OP_EQUALS:
+            case TokenType::OP_PLUS:
+            case TokenType::OP_MINUS:
+            case TokenType::CLASS_ERROR:
+                break;
+            }
     }
     [[nodiscard]] inline std::optional<SyntaxNode> lookup_node(TokenType ttype, const std::string ident = "") const {
         if (ttype == TokenType::VAR_INT ) {
@@ -114,11 +125,6 @@ class SyntaxTree {
         } 
         return {};
     }
-    // [[nodiscard]] inline std::optional<SyntaxNode> pop_stack_node() {
-    //     if (!m_node_call_stack.empty()) {
-    //         return m_node_call_stack.end();
-    //     }
-    // }
 
     [[nodiscard]] inline std::vector<SyntaxNode> get_call_stack() const {
         return m_call_stack;
@@ -129,9 +135,6 @@ class SyntaxTree {
 
 
   private:
-    // DONE: Fix by using call stack for SyntaxNodes to be walked.
-    // DONE: Change map to contain only variables
-    // TODO: Verify get_node_value() function
     std::vector<SyntaxNode> m_call_stack{};
     std::unordered_map<std::string, SyntaxNode> m_var_table;
 };
