@@ -136,7 +136,7 @@ void Tokenizer::tokenize() {
                             std::visit(getter, peeked.value);
                             std::println("IDENT: {}", ident);
 
-                            auto tree_val = ast.get_node(ident);
+                            auto tree_val = ast.lookup_node(TokenType::VAR_INT, ident);
                             if (!tree_val.has_value()) {
                                 std::println(stderr, "Error: Could not get SyntaxNode with ident: {}", ident);
                                 exit(EXIT_FAILURE);
@@ -154,8 +154,6 @@ void Tokenizer::tokenize() {
                                 }) 
                             ));
 
-                            // generator.emit();
-
                             consume();
                             require_semi = true;
                             break;
@@ -172,8 +170,6 @@ void Tokenizer::tokenize() {
                                     .exit_code = std::get<int>(peek(1).value().value)
                                 }) 
                             ));
-
-                            // generator.emit();
 
                             consume();
                             require_semi = true;
@@ -216,23 +212,6 @@ void Tokenizer::tokenize() {
                 const auto ident = peek(1).value().value;
                 const auto int_val = peek(3).value().value;
 
-                // create new node
-                // NodeIntVar inode{};
-                // auto paramgetter = [&](const auto &v) {
-                //     if constexpr (std::is_same_v<std::decay_t<decltype(v)>, std::string>) {
-                //         inode.ident = v;
-                //         // std::println("IDENT: {}", node.ident);
-                //     }
-                //     else if constexpr (std::is_same_v<std::decay_t<decltype(v)>, int>) {
-                //         inode.value = v;
-                //         // std::println("VALUE: {}", node.value);
-                //     };
-                // } ;
-                //
-                // inode.is_mutable = true;
-                // std::visit(paramgetter, ident);
-                // std::visit(paramgetter, int_val);
-
                 // `let`
                 ast.push_node(SyntaxNode{ NodeLet{} });
                 // Variable
@@ -243,9 +222,6 @@ void Tokenizer::tokenize() {
                         .is_mutable = true,
                     } 
                 });
-
-                // Generate variable storage code
-                // generator.emit(snode);
 
                 consume();
                 require_semi = true;
@@ -284,7 +260,7 @@ void Tokenizer::tokenize() {
     }
     
    //boom 
-    CodeGenerator generator{m_ofs, ast.get_call_stack(), ast};
+    CodeGenerator generator{m_ofs, ast.get_call_stack(), ast.get_var_table()};
     generator.emit();
 
     std::println("BOMBO");

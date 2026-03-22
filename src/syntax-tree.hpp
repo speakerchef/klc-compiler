@@ -3,6 +3,7 @@
 #include "include/utils.hpp"
 #include "tokenizer.hpp"
 #include <cstddef>
+#include <cstdlib>
 #include <type_traits>
 #include <unordered_map>
 
@@ -82,51 +83,55 @@ class SyntaxTree {
         switch (node.get_node_type()) {
             case TokenType::VAR_INT: {
                 NodeIntVar n = std::get<NodeIntVar>(node.get_node_value(TokenType::VAR_INT));
-                m_nodes.insert({
+                m_var_table.insert({
                     n.ident,
                     SyntaxNode(n)
                 });
-                m_call_stack.emplace_back(TokenType::VAR_INT, n.ident);
+                m_call_stack.emplace_back(node);
                 break;
             }
             case TokenType::KW_LET: {
-                m_nodes.insert({
-                    "KW_LET",
-                    node
-                });
-                m_call_stack.emplace_back(TokenType::KW_LET, "KW_LET");
+                m_call_stack.emplace_back(node);
                 break;
             }
             case TokenType::LIT_INT: {
-                m_nodes.insert({
-                    "LIT_INT",
-                    node
-                });
-                m_call_stack.emplace_back(TokenType::LIT_INT, "LIT_INT");
+                m_call_stack.emplace_back(node);
                 break;
             }
             case TokenType::KW_EXIT: {
-                m_nodes.insert({
-                    "KW_EXIT",
-                    node
-                });
-                m_call_stack.emplace_back(TokenType::KW_EXIT, "KW_EXIT");
+                m_call_stack.emplace_back(node);
                 break;
             }
         }
     }
-    [[nodiscard]] inline std::optional<SyntaxNode> get_node(const std::string &ident) const {
-        return m_nodes.at(ident);
+    [[nodiscard]] inline std::optional<SyntaxNode> lookup_node(TokenType ttype, const std::string ident = "") const {
+        if (ttype == TokenType::VAR_INT ) {
+            if (ident.empty()) { 
+                std::println(stderr, "Error: Identifier required.");
+                exit(EXIT_FAILURE);
+            }
+            return m_var_table.at(ident);
+        } 
+        return {};
     }
+    // [[nodiscard]] inline std::optional<SyntaxNode> pop_stack_node() {
+    //     if (!m_node_call_stack.empty()) {
+    //         return m_node_call_stack.end();
+    //     }
+    // }
 
-    using call_stack_pair_t = std::vector<std::pair<TokenType, std::string>>;
-    [[nodiscard]] inline call_stack_pair_t get_call_stack() const {
+    [[nodiscard]] inline std::vector<SyntaxNode> get_call_stack() const {
         return m_call_stack;
     }
+    [[nodiscard]] inline std::unordered_map<std::string, SyntaxNode> get_var_table() const {
+        return m_var_table;
+    }
+
 
   private:
-    // TODO: Fix by using call stack for SyntaxNodes to be walked.
-    // TODO: Change map to contain only variables
-    call_stack_pair_t m_call_stack{};
-    std::unordered_map<std::string, SyntaxNode> m_nodes;
+    // DONE: Fix by using call stack for SyntaxNodes to be walked.
+    // DONE: Change map to contain only variables
+    // TODO: Verify get_node_value() function
+    std::vector<SyntaxNode> m_call_stack{};
+    std::unordered_map<std::string, SyntaxNode> m_var_table;
 };
