@@ -128,11 +128,18 @@ void Parser::parse_tokens() {
                             break;
                         }
                         case TokenType::LIT_INT: {
-                            int ec_int_lit = std::get<int>(peek(1).value().value);
-                            if (!peek(4).has_value() || peek(4).value().type != TokenType::DELIM_SEMI) {
-                                std::println("Error: Missing `;` after declaration `{}`", ec_int_lit);
+                            if (!peek(2).has_value() || peek(2).value().type != TokenType::DELIM_SEMI) {
+                                std::println("Error: Missing `;` after declaration `{}`", 
+                                             std::get<int>(peek(1).value().value));
                                 exit(EXIT_FAILURE);
                             }
+
+                            int ec_int_lit = 0;
+                            auto getter = Overload {
+                                [&](const int &i) { ec_int_lit = i; },
+                                [&](std::string) {},
+                            };
+                            std::visit(getter, peek(1).value().value);
 
                             generator.emit(SyntaxNode( NodeExit({ .exit_code = ec_int_lit }) ));
 

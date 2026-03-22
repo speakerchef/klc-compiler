@@ -22,7 +22,18 @@
 - More to be added here... KLC: KNOB-Lang-Compiler
 
 
+- **If you would like to run the compiler in its current state:**
 ```bash
-# asm build macos
- -o test.o test.s && ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _start -o test test.o && ./test
+#Build
+cmake -S . -B build/
+cd ./build
+cmake --build .
+
+#Run
+./klc <FILE.knv>
+```
+
+- **If you would like to build the a.s asm file:**
+```bash
+clang -c -g -o a.o a.s && ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _start -o out a.o && ./out
 $$```

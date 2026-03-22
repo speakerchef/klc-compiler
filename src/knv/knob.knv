@@ -1,3 +1,4 @@
-let booger = 55;
-let goober = 42;
-exit goober;
+let bigmac = 69;
+let squidward = 111;
+
+exit 11;
