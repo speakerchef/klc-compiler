@@ -14,7 +14,7 @@ class Parser {
     std::ofstream &m_osref;
 
     [[nodiscard]] std::optional<Token> peek(size_t offset) const;
-    [[maybe_unused]] std::optional<Token> take(size_t offset);
+    [[maybe_unused]] std::optional<Token> pop();
 
   public:
     Parser(std::vector<Token> toks, std::ofstream &ofref);

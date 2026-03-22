@@ -21,16 +21,18 @@ enum class TokenType {
     KW_EXIT,
     KW_RETURN,
     KW_LET,
+    KW_INT,
     OP_EQUALS,
     OP_PLUS,
     OP_MINUS,
     CLASS_ERROR,
     VAR_INT,
+    UNCLASSED_VAR_DEC,
 };
 
 typedef struct Token {
     TokenType type;
-    std::variant<int, char, std::string> value;
+    std::variant<int, std::string> value;
 } Token;
 
 class Tokenizer {

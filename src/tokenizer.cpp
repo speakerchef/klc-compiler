@@ -6,21 +6,10 @@
 #include <fstream>
 #include <print>
 #include <string>
-#include <utility>
 #include <vector>
 
 [[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
     Token tok{};
-
-    if (buf == "exit") {
-        tok.type = TokenType::KW_EXIT;
-        tok.value.emplace<std::string>(buf);
-        return tok;
-    } else if (buf == "return") {
-        tok.type = TokenType::KW_RETURN;
-        tok.value.emplace<std::string>(buf);
-        return tok;
-    }
 
     size_t dg_cnt = 0;
     std::string int_value{};
@@ -31,9 +20,32 @@
 
     if (!int_value.empty()) {
         tok.type = TokenType::LIT_INT;
-        tok.value.emplace<int>(std::move(std::stoi(int_value)));
+        tok.value.emplace<int>(std::stoi(int_value));
         return tok;
     }
+    if (buf == "exit") {
+        tok.type = TokenType::KW_EXIT;
+        tok.value.emplace<std::string>(buf);
+        return tok;
+    } else if (buf == "return") {
+        tok.type = TokenType::KW_RETURN;
+        tok.value.emplace<std::string>(buf);
+        return tok;
+    } else if (buf == "let") {
+        tok.type = TokenType::KW_LET;
+        tok.value.emplace<std::string>(buf);
+        return tok;
+    } else if (buf == "=") {
+        tok.type = TokenType::OP_EQUALS;
+        tok.value.emplace<std::string>(buf);
+        return tok;
+    } else {
+        tok.type = TokenType::UNCLASSED_VAR_DEC;
+        std::println("Unclassed: {}", buf);
+        tok.value.emplace<std::string>(buf);
+        return tok;
+    }
+
 
     std::println(stderr, "Unknown Symbol: `{}`", buf);
     exit(EXIT_FAILURE);
@@ -64,7 +76,16 @@
             // Given buf had a token and we parsed it,
             // we add the semi token separately
             tokens.emplace_back(
-                Token({ .type = TokenType::DELIM_SEMI, .value = ch}));
+                Token({ .type = TokenType::DELIM_SEMI, .value = ";"}));
+        }
+        else if (ch == '=') {
+            if (!buf.empty()) {
+                tokens.emplace_back(this->classify_token(buf));
+                buf.clear();
+            }
+
+            tokens.emplace_back(
+                Token({ .type = TokenType::OP_EQUALS, .value = "="}));
         }
     }
     return tokens;
