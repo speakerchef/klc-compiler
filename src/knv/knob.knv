@@ -1,1 +1,3 @@
-let sum = 2 + 3;
+let goobert = 22;
+let doobert = 69;
+exit doobert;

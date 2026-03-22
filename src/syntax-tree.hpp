@@ -10,6 +10,8 @@ struct NodeExit {
     int exit_code;
 };
 
+struct NodeLet {};
+
 struct NodeIntVar {
     int value;
     std::string ident;
@@ -23,7 +25,7 @@ struct NodeIntLit {
 
 struct SyntaxNode {
   public:
-    SyntaxNode(std::variant<NodeExit, NodeIntVar, NodeIntLit> node)
+    SyntaxNode(std::variant<NodeExit, NodeIntVar, NodeIntLit, NodeLet> node)
     : m_node(std::move(node)) {}
     SyntaxNode();
 
@@ -31,7 +33,8 @@ struct SyntaxNode {
         auto node_typer = Overload{
             [](NodeExit) { return TokenType::KW_EXIT; },
             [](NodeIntVar) { return TokenType::VAR_INT; },
-            [](NodeIntLit) { return TokenType::LIT_INT; }
+            [](NodeIntLit) { return TokenType::LIT_INT; },
+            [](NodeLet) { return TokenType::KW_LET; },
         };
         return std::visit(node_typer, m_node);
     }
@@ -64,7 +67,7 @@ struct SyntaxNode {
     }
 
   private:
-    std::variant<NodeExit, NodeIntVar, NodeIntLit> m_node;
+    std::variant<NodeExit, NodeIntVar, NodeIntLit, NodeLet> m_node;
 
 };
 
@@ -83,6 +86,31 @@ class SyntaxTree {
                     n.ident,
                     SyntaxNode(n)
                 });
+                m_call_stack.emplace_back(TokenType::VAR_INT, n.ident);
+                break;
+            }
+            case TokenType::KW_LET: {
+                m_nodes.insert({
+                    "KW_LET",
+                    node
+                });
+                m_call_stack.emplace_back(TokenType::KW_LET, "KW_LET");
+                break;
+            }
+            case TokenType::LIT_INT: {
+                m_nodes.insert({
+                    "LIT_INT",
+                    node
+                });
+                m_call_stack.emplace_back(TokenType::LIT_INT, "LIT_INT");
+                break;
+            }
+            case TokenType::KW_EXIT: {
+                m_nodes.insert({
+                    "KW_EXIT",
+                    node
+                });
+                m_call_stack.emplace_back(TokenType::KW_EXIT, "KW_EXIT");
                 break;
             }
         }
@@ -91,7 +119,14 @@ class SyntaxTree {
         return m_nodes.at(ident);
     }
 
-  private:
-    std::unordered_map<std::string, SyntaxNode> m_nodes;
+    using call_stack_pair_t = std::vector<std::pair<TokenType, std::string>>;
+    [[nodiscard]] inline call_stack_pair_t get_call_stack() const {
+        return m_call_stack;
+    }
 
+  private:
+    // TODO: Fix by using call stack for SyntaxNodes to be walked.
+    // TODO: Change map to contain only variables
+    call_stack_pair_t m_call_stack{};
+    std::unordered_map<std::string, SyntaxNode> m_nodes;
 };
