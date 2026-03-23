@@ -1,73 +1,136 @@
 #pragma once
 
-#include "nodes.hpp"
+#include "include/utils.hpp"
 #include "tokenizer.hpp"
 #include <cstddef>
+#include <cstdlib>
 #include <type_traits>
 #include <unordered_map>
 
+struct NodeExit {
+    int exit_code;
+};
+
+struct NodeLet {};
+
+struct NodeIntVar {
+    int value;
+    std::string ident;
+    bool is_mutable;
+};
+
+struct NodeIntLit {
+    int value;
+};
+
 struct SyntaxNode {
-  private:
-    std::variant<NodeExit, NodeIntVar> m_node;
-
   public:
-    SyntaxNode(std::variant<NodeExit, NodeIntVar> node)
+    SyntaxNode(std::variant<NodeExit, NodeLet, NodeIntVar, NodeIntLit> &&node)
     : m_node(std::move(node)) {}
-        
-    [[nodiscard]] inline TokenType get_node_type() const {
-        auto node_typer = Overload{
-            [](NodeExit) { return TokenType::KW_EXIT; },
-            [](NodeIntVar) { return TokenType::VAR_INT; }
-        };
+    SyntaxNode();
 
+    [[nodiscard]] inline TokenType get_node_type() const {
+        auto node_typer = Overload {
+            [](NodeExit)   { return TokenType::KW_EXIT; },
+            [](NodeIntVar) { return TokenType::VAR_INT; },
+            [](NodeIntLit) { return TokenType::LIT_INT; },
+            [](NodeLet)    { return TokenType::KW_LET;  },
+        };
         return std::visit(node_typer, m_node);
     }
-    [[nodiscard]] inline std::variant<NodeExit, NodeIntVar> get_node_value(TokenType ttype) const {
-        if (ttype == TokenType::VAR_INT) {
-            return NodeIntVar({ 
-                .value = std::get<NodeIntVar>(m_node).value, 
-                .ident = std::get<NodeIntVar>(m_node).ident, 
-                .is_mutable = std::get<NodeIntVar>(m_node).is_mutable, 
-            });
-        }
-        else if (ttype == TokenType::KW_EXIT) {
-            return NodeExit({ 
-                .exit_code = std::get<NodeExit>(m_node).exit_code, 
-            });
-        }
-        return {};
-    }
-    inline void set_node_value(const auto &ref) {
-        auto vis_setter = [&](const auto &val) {
-            if constexpr (std::is_same_v<decltype(val), NodeIntVar>) {
-                m_node = { .value = val.value, .ident = val.ident, .is_immutable = val.is_immutable }; 
-            } else if constexpr (std::is_same_v<decltype(val), NodeExit>) {
-                m_node = { .exit_code = val.exit_code }; 
-            };
-        };
 
-        std::visit(vis_setter, ref);
+    [[nodiscard]] inline auto get_node_value() const {
+        auto getter_v = Overload {
+            [&](const NodeExit)   { return m_node; },
+            [&](const NodeLet)    { return m_node; },
+            [&](const NodeIntVar) { return m_node; },
+            [&](const NodeIntLit) { return m_node; },
+        };
+        return std::visit(getter_v, m_node);
     }
+
+    inline void set_node_value(auto &&node_val) {
+        auto setter_v = [&](auto &&val) {
+            using decay_t = std::decay_t<decltype(val)>;
+            if constexpr (std::is_same_v<decay_t, NodeExit>) {
+                m_node = { .exit_code = val.exit_code }; 
+            }
+            else if constexpr (std::is_same_v<decay_t, NodeLet>) {
+                m_node = {}; 
+            }
+            else if constexpr (std::is_same_v<decay_t, NodeIntVar>) {
+                m_node = { 
+                    .value = val.value, 
+                    .ident = std::move(val.ident), 
+                    .is_immutable = val.is_immutable 
+                }; 
+            } 
+            else if constexpr (std::is_same_v<decay_t, NodeIntLit>) {
+                m_node = { .value = val.value }; 
+            }
+        };
+        std::visit(setter_v, std::move(node_val));
+    }
+
+  private:
+    std::variant<NodeExit, NodeLet, NodeIntVar, NodeIntLit> m_node;
+
+};
+
+struct NodeExpr {
+    SyntaxNode atom{};
+    std::unordered_map<std::string, NodeExpr> exprP{};
 };
 
 class SyntaxTree {
-  private:
-    std::unordered_map<std::string, SyntaxNode> m_nodes;
-
   public:
-    inline void push_node(SyntaxNode node) {
+    inline void push_node(SyntaxNode &&node) {
         switch (node.get_node_type()) {
             case TokenType::VAR_INT: {
-                NodeIntVar n = std::get<NodeIntVar>(node.get_node_value(TokenType::VAR_INT));
-                m_nodes.insert({
-                    n.ident,
+                auto n = std::get<NodeIntVar>(node.get_node_value());
+                m_var_table.insert({
+                    std::move(n.ident),
                     SyntaxNode(n)
                 });
+                m_called_nodes.emplace_back(std::move(node));
+                break;                    
+            }                             
+            case TokenType::KW_LET:                             
+            case TokenType::DELIM_SEMI:
+            case TokenType::KW_RETURN:
+            case TokenType::KW_EXIT:
+            case TokenType::KW_INT:
+            case TokenType::LIT_INT:                              
+            case TokenType::LIT_STR:
+            case TokenType::UNCLASSED_VAR_DEC:
+            case TokenType::OP_EQUALS:
+            case TokenType::OP_PLUS:
+            case TokenType::OP_MINUS: {
+                m_called_nodes.emplace_back(std::move(node));
                 break;
             }
         }
     }
-    [[nodiscard]] inline std::optional<SyntaxNode> get_node(const std::string &ident) const {
-        return m_nodes.at(ident);
+    [[nodiscard]] inline std::optional<SyntaxNode> lookup_node(TokenType ttype, const std::string ident = "") const {
+        if (ttype == TokenType::VAR_INT ) {
+            if (ident.empty()) { 
+                std::println(stderr, "Error: Identifier required.");
+                exit(EXIT_FAILURE);
+            }
+            return m_var_table.at(ident);
+        } 
+        return {};
     }
+
+    [[nodiscard]] inline std::vector<SyntaxNode> get_called_nodes() const {
+        return m_called_nodes;
+    }
+    [[nodiscard]] inline std::unordered_map<std::string, SyntaxNode> get_var_table() const {
+        return m_var_table;
+    }
+
+
+  private:
+    std::vector<SyntaxNode> m_called_nodes{};
+    std::unordered_map<std::string, SyntaxNode> m_var_table;
 };

@@ -1,24 +1,24 @@
 #pragma once
 
+#include "syntax-tree.hpp"
 #include "tokenizer.hpp"
 #include "vector"
 #include <cstddef>
 #include <cstdlib>
-#include <fstream>
 #include <optional>
 
 class Parser {
+  public:
+    Parser(std::vector<Token> toks);
+    ~Parser();
+
   private:
     std::vector<Token> m_tokens;
     size_t m_token_ptr = 0;
-    std::ofstream &m_osref;
+    SyntaxTree syntax_tree{};
+    void parse_tokens();
 
     [[nodiscard]] std::optional<Token> peek(size_t offset) const;
-    [[maybe_unused]] std::optional<Token> pop();
-
-  public:
-    Parser(std::vector<Token> toks, std::ofstream &ofref);
-    ~Parser();
-    void parse_tokens();
+    [[maybe_unused]] std::optional<Token> consume();
 };
 
