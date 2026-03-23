@@ -10,7 +10,7 @@
 #include <vector>
 
 /* */
-Tokenizer::Tokenizer(std::ofstream os, std::ifstream is)
+Tokenizer::Tokenizer(std::ofstream &&os, std::ifstream &&is)
     : 
     m_ifs(std::move(is)),
     m_ofs(std::move(os))
@@ -130,19 +130,18 @@ void Tokenizer::tokenize() {
                             std::string ident{};
 
                             auto getter = Overload {
-                                [&](const std::string &s){ ident = s; },
-                                [&](const int &i){ ec_int_lit = i; },
+                                [&](std::string &&s){ ident = std::move(s); },
+                                [&](const int i){ ec_int_lit = i; },
                             };
-                            std::visit(getter, peeked.value);
+                            std::visit(getter, std::move(peeked.value));
                             std::println("IDENT: {}", ident);
 
-                            auto tree_val = ast.lookup_node(TokenType::VAR_INT, ident);
+                            std::optional<SyntaxNode> tree_val = ast.lookup_node(TokenType::VAR_INT, ident);
                             if (!tree_val.has_value()) {
                                 std::println(stderr, "Error: Could not get SyntaxNode with ident: {}", ident);
                                 exit(EXIT_FAILURE);
                             }
 
-                            SyntaxNode snode = tree_val.value();
                             ec_int_lit = std::get<NodeIntVar>(tree_val
                                 .value()
                                 .get_node_value()
@@ -228,26 +227,11 @@ void Tokenizer::tokenize() {
 
                 break;
             }
-            case TokenType::KW_INT: {
-                consume();
-                break;
-            }
-            case TokenType::LIT_INT: {
-                consume();
-                break; 
-            }
-            case TokenType::VAR_INT: {
-                consume();
-                break;
-            }
-            case TokenType::UNCLASSED_VAR_DEC: {
-                consume();
-                break;
-            }
-            case TokenType::OP_EQUALS: {
-                consume();
-                break;
-            }
+            case TokenType::KW_INT:
+            case TokenType::LIT_INT: 
+            case TokenType::VAR_INT: 
+            case TokenType::UNCLASSED_VAR_DEC: 
+            case TokenType::OP_EQUALS: 
             case TokenType::OP_PLUS: {
                 consume();
                 break;
@@ -259,43 +243,43 @@ void Tokenizer::tokenize() {
         }
     }
     
-    CodeGenerator generator{m_ofs, ast.get_call_stack(), ast.get_var_table()};
+    CodeGenerator generator{std::move(m_ofs), ast.get_called_nodes(), ast.get_var_table()};
     generator.emit();
 }
 
 /* */
-[[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
+[[nodiscard]] Token Tokenizer::classify_token(std::string &&buf) noexcept {
     Token tok{};
 
     if (buf == ";") {
         tok.type = TokenType::DELIM_SEMI;
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     } else if (buf == "exit") {
         tok.type = TokenType::KW_EXIT;
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     } else if (buf == "let") {
         tok.type = TokenType::KW_LET;
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     } else if (buf == "=") {
         tok.type = TokenType::OP_EQUALS;
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     } else if (buf == "+") {
         tok.type = TokenType::OP_PLUS;
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     } 
     else if (buf.find_first_not_of("0123456789")) {
         tok.type = TokenType::LIT_INT;
-        tok.value.emplace<int>(std::stoi(buf));
+        tok.value.emplace<int>(std::stoi(std::move(buf)));
         return tok;
     } else { // Not reserved by language
         tok.type = TokenType::UNCLASSED_VAR_DEC;
         std::println("Unclassed: {}", buf);
-        tok.value.emplace<std::string>(buf);
+        tok.value.emplace<std::string>(std::move(buf));
         return tok;
     }
 }

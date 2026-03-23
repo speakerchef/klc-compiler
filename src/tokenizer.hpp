@@ -27,7 +27,6 @@ enum class TokenType {
     OP_EQUALS,
     OP_PLUS,
     OP_MINUS,
-    CLASS_ERROR,
 };
 
 typedef struct Token {
@@ -37,7 +36,7 @@ typedef struct Token {
 
 class Tokenizer {
   public:
-    Tokenizer(std::ofstream os, std::ifstream is);
+    Tokenizer(std::ofstream &&os, std::ifstream &&is);
     ~Tokenizer();
 
     [[nodiscard]] std::optional<Token> peek(size_t offset) const;
@@ -55,6 +54,6 @@ class Tokenizer {
     std::ofstream m_ofs;
 
     /*==========================================================*/
-    [[nodiscard]] Token classify_token(std::string &buf) noexcept;
+    [[nodiscard]] Token classify_token(std::string &&buf) noexcept;
 
 };

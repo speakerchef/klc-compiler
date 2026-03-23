@@ -28,12 +28,9 @@ int main(int argc, char **argv) {
     o_stream << ".global _start\n.align 4\n_start:\n";
 
     // Process
-    Tokenizer tokenizer{std::move(o_stream), std::move(file)};
+    Tokenizer tokenizer{ std::move(o_stream), std::move(file) };
     std::vector<Token> tokens{tokenizer.get_tokens()};
 
-    // Parser parser(tokens, o_stream); 
-
-    o_stream.close();
     println("Successful Compilation!");
 
     const char *assemble_cmd = "as -o ./gen_asm.o ./gen_asm.s";
