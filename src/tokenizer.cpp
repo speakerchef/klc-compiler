@@ -267,19 +267,6 @@ void Tokenizer::tokenize() {
 [[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
     Token tok{};
 
-    size_t dg_cnt = 0;
-    std::string int_value{};
-    while (dg_cnt < buf.length() && std::isdigit(buf.at(dg_cnt))) {
-        int_value.push_back(buf.at(dg_cnt));
-        ++dg_cnt;
-    }
-
-    if (!int_value.empty()) {
-        tok.type = TokenType::LIT_INT;
-        tok.value.emplace<int>(std::stoi(int_value));
-        return tok;
-    }
-
     if (buf == ";") {
         tok.type = TokenType::DELIM_SEMI;
         tok.value.emplace<std::string>(buf);
@@ -299,6 +286,11 @@ void Tokenizer::tokenize() {
     } else if (buf == "+") {
         tok.type = TokenType::OP_PLUS;
         tok.value.emplace<std::string>(buf);
+        return tok;
+    } 
+    else if (buf.find_first_not_of("0123456789")) {
+        tok.type = TokenType::LIT_INT;
+        tok.value.emplace<int>(std::stoi(buf));
         return tok;
     } else { // Not reserved by language
         tok.type = TokenType::UNCLASSED_VAR_DEC;

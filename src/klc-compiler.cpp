@@ -27,14 +27,9 @@ int main(int argc, char **argv) {
     std::ofstream o_stream("./gen_asm.s");
     o_stream << ".global _start\n.align 4\n_start:\n";
 
-    auto visitor = [](const auto &value) { println("Token value: {}", value); };
-    
     // Process
     Tokenizer tokenizer{std::move(o_stream), std::move(file)};
     std::vector<Token> tokens{tokenizer.get_tokens()};
-    for (const Token &tok : tokens) {
-        std::visit(visitor, tok.value);
-    }
 
     // Parser parser(tokens, o_stream); 
 
