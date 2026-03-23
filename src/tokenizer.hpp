@@ -54,6 +54,6 @@ class Tokenizer {
     std::ofstream m_ofs;
 
     /*==========================================================*/
-    [[nodiscard]] Token classify_token(std::string &&buf) noexcept;
+    [[nodiscard]] Token classify_token(std::string &buf) noexcept;
 
 };

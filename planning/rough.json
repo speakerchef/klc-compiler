@@ -1,0 +1,75 @@
+"case1": {
+    "body": NodeVarDeclaration {
+        "kind": "let",
+        "declarator": NodeVarDeclarator {
+            "ident": NodeIdentifier {
+                "name": "x"
+            },
+            "value": NodeExpr {
+                "expr": NodeIntLiteral {
+                    "value": 2
+                }
+            }
+        }
+    },
+}
+"case2":{
+    "body": NodeVarDeclaration {
+        "kind": "let",
+        "declarator": NodeVarDeclarator {
+            "ident": NodeIdentifier {
+                "name": "y"
+            },
+            "value": NodeExpr {
+                "expr": NodeBinaryExpr {
+                    "left": NodeExpr {
+                        "expr": NodeIntLiteral {
+                            "value": 5,
+                        }
+                    },
+                    "right": NodeExpr {
+                        "expr": NodeIntLiteral {
+                            "value": 5,
+                        }
+                    },
+                    "op": "+",
+                }
+            }
+        }
+    },
+},
+"case3":{
+    "body": NodeVarDeclaration {
+        "kind": "let",
+        "declarator": NodeVarDeclarator {
+            "ident": NodeIdentifier {
+                "name": "z"
+            },
+            "value": NodeExpr {
+                "expr": NodeBinaryExpr {
+                    "left": NodeExpr {
+                        "expr": NodeIntLiteral {
+                            "value": 5,
+                        }
+                    },
+                    "right": NodeExpr {
+                        "expr": NodeBinaryExpr {
+                            "left": NodeExpr {
+                                "expr": NodeIdentifier {
+                                    "name": "x"
+                                }
+                            },
+                            "right": NodeExpr {
+                                "expr": NodeIntLiteral {
+                                    "value": 4
+                                }
+                            },
+                            "op": "*"
+                        }
+                    },
+                    "op": "+",
+                }
+            }
+        }
+    },
+},

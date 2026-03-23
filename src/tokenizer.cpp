@@ -142,13 +142,13 @@ void Tokenizer::tokenize() {
                                 exit(EXIT_FAILURE);
                             }
 
-                            ec_int_lit = std::get<NodeIntVar>(tree_val
+                            ec_int_lit = std::get<ExprIntVariable>(tree_val
                                 .value()
                                 .get_node_value()
                             )   .value;
 
                             ast.push_node(SyntaxNode( 
-                                NodeExit({ 
+                                ExprExit({ 
                                     .exit_code = ec_int_lit 
                                 }) 
                             ));
@@ -165,7 +165,7 @@ void Tokenizer::tokenize() {
                             }
 
                             ast.push_node( SyntaxNode( 
-                                NodeExit({ 
+                                ExprExit({ 
                                     .exit_code = std::get<int>(peek(1).value().value)
                                 }) 
                             ));
@@ -212,10 +212,10 @@ void Tokenizer::tokenize() {
                 const auto int_val = peek(3).value().value;
 
                 // `let`
-                ast.push_node(SyntaxNode{ NodeLet{} });
-                // Variable
+                ast.push_node(SyntaxNode{ ExprLet{} });
+                // Variableiable
                 ast.push_node(SyntaxNode{ 
-                    NodeIntVar{
+                    ExprIntVariable{
                         .value = std::get<int>(peek(3).value().value),
                         .ident = std::get<std::string>(peek(1).value().value),
                         .is_mutable = true,
@@ -248,38 +248,38 @@ void Tokenizer::tokenize() {
 }
 
 /* */
-[[nodiscard]] Token Tokenizer::classify_token(std::string &&buf) noexcept {
+[[nodiscard]] Token Tokenizer::classify_token(std::string &buf) noexcept {
     Token tok{};
 
     if (buf == ";") {
         tok.type = TokenType::DELIM_SEMI;
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     } else if (buf == "exit") {
         tok.type = TokenType::KW_EXIT;
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     } else if (buf == "let") {
         tok.type = TokenType::KW_LET;
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     } else if (buf == "=") {
         tok.type = TokenType::OP_EQUALS;
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     } else if (buf == "+") {
         tok.type = TokenType::OP_PLUS;
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     } 
     else if (buf.find_first_not_of("0123456789")) {
         tok.type = TokenType::LIT_INT;
-        tok.value.emplace<int>(std::stoi(std::move(buf)));
+        tok.value.emplace<int>(std::stoi(buf));
         return tok;
     } else { // Not reserved by language
         tok.type = TokenType::UNCLASSED_VAR_DEC;
         std::println("Unclassed: {}", buf);
-        tok.value.emplace<std::string>(std::move(buf));
+        tok.value.emplace<std::string>(buf);
         return tok;
     }
 }
