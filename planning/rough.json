@@ -73,3 +73,55 @@
         }
     },
 },
+
+
+"tokens": ["let", "x", "=", "25", ";"]
+    case "let": {
+        1) build - "let": NodeVarDeclaration {
+            "kind": "let",                                      2) Look for Identifier (if none, exit)
+            "declarator": NodeVarDeclarator { 
+                "ident": NodeIdentifier {
+                    "name": "x"                                 3) Build Identifier node with "name"
+                },                                              4) Look for equality operator
+                                                                5) Look for binary operators until ";", If no semi, exit.
+                                                                    • if operator (+-*/):
+                                                                       * Pratt parse for precedence:
+                                                                            • get lv, rv
+                                                                            • for each lv and rv,
+                                                                                • rv: look for ops to the right
+                                                                                • rv: bind self to highest precedence operator
+                                                                                • Bind BinExprs together with highest precedence
+                                                                6) switch(TokenType)
+
+                "value": NodeExpr {
+                        "expr": NodeIntLiteral | NodeBinaryExpr{
+                            "left", 
+                            "right",
+                            "operator"
+                        }
+
+                    }
+                }
+            },
+        look for declarator: (any UNCLASSED_VAR_DEC)
+        look for "="
+        look for Expression:
+        }
+    }
+
+
+"case1": {
+    "body": NodeVarDeclaration {
+        "kind": "let",
+        "declarator": NodeVarDeclarator {
+            "ident": NodeIdentifier {
+                "name": "x"
+            },
+            "value": NodeExpr {
+                "expr": NodeIntLiteral {
+                    "value": 2
+                }
+            }
+        }
+    },
+}

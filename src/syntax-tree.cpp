@@ -30,6 +30,8 @@ void SyntaxNode::set_node_value(auto &&node_val) {
     std::visit(setter_v, std::move(node_val));
 }
 
+//TODO: figure out node construction from top down
+//TODO: recursive exploration of nodes
 //====================================//
 void SyntaxTree::push_node(SyntaxNode &&node) {
 
