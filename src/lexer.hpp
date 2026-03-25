@@ -18,6 +18,7 @@ enum class TokenType {
     KW_EXIT,
     KW_RETURN,
     KW_LET,
+    KW_MUT,
     KW_INT,
     BIN_OP,
     OP_EQUALS,
@@ -31,10 +32,16 @@ enum class TokenType {
     VAR_IDENT,
 };
 
-typedef struct Token {
+struct LocData{
+    size_t line;
+    size_t col;
+};
+
+struct Token {
     TokenType type;
     std::string value;
-} Token;
+    LocData loc;
+};
 
 class Lexer {
   public:

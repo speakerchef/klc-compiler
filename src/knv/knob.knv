@@ -1,1 +1,2 @@
-let bombastic = 4 + 5 * (8 + 18) - 1;
+let x = 7;
+let bun = 99 + (x * 6);

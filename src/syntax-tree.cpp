@@ -19,10 +19,11 @@ NodeType SyntaxNode::get_node_type() const {
 
 std::string NodeBinaryExpr::op_to_string(BinOp bop) const {
     switch (bop) {
-        case BinOp::ADD: return "+"; 
-        case BinOp::SUB: return "-"; 
-        case BinOp::MULT: return "*"; 
-        case BinOp::DIV: return "/"; 
+        case BinOp::ADD: return "+";
+        case BinOp::SUB: return "-";
+        case BinOp::MULT: return "*";
+        case BinOp::DIV: return "/";
+        case BinOp::EQ: return "=";
     }
 }
 

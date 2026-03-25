@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lexer.hpp"
 #include "syntax-tree.hpp"
 #include <concepts>
 #include <cstddef>
@@ -27,6 +28,7 @@ enum class BinOp {
     SUB,
     MULT,
     DIV,
+    EQ,
 };
 
 enum class NodeType {
@@ -41,12 +43,12 @@ enum class NodeType {
 };
 
 enum class VarType {
-    MUT,
-    CONST,
+    MUT, // mutable
+    LET, // default
 };
 
 struct NodeProgram {
-    std::vector<SyntaxNode> program;
+    std::vector<SyntaxNode> main;
     std::unordered_map<std::string, NodeExpr> var_table;
 
     auto &lookup_node(const std::string &ident) {
@@ -63,20 +65,23 @@ struct NodeBinaryExpr { // eg. a + b or 4 * 5
     BinOp op;
     std::unique_ptr<NodeBinaryExpr> lhs;
     std::unique_ptr<NodeBinaryExpr> rhs;
+    LocData loc;
+
     void print() const;
+
 private:
     std::string op_to_string(BinOp bop) const;
-
-
 };
 
 struct NodeUnaryExpr {
     std::unique_ptr<SyntaxNode> right; // right recursed
     BinOp op;
+    LocData loc;
 };
 
 struct NodeIdentifier {
     std::string name; // used for variable lookup
+    LocData loc;
 };
 
 // Variables
@@ -84,18 +89,22 @@ struct NodeVarDeclaration {
     VarType kind; // mut, const
     NodeIdentifier ident;
     std::unique_ptr<SyntaxNode> value;
+    LocData loc;
 };
 
 struct NodeIntLiteral {
     int value;
+    LocData loc;
 };
 
 struct NodeStmtExit {
     std::unique_ptr<SyntaxNode> exit_code;
+    LocData loc;
 };
 
 struct NodeExpr {
     std::unique_ptr<SyntaxNode> expr; // Literal or expression
+    LocData loc;
 };
 
 struct SyntaxNode {
@@ -104,13 +113,15 @@ struct SyntaxNode {
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
                  NodeStmtExit>
         m_node;
+    LocData loc;
+
+    // SyntaxNode(const auto& node) : m_node(node) {}
+    // SyntaxNode operator=(const auto& node) { return node; }
+    // SyntaxNode(auto&& node) : m_node(std::move(node)) {}
+    // SyntaxNode operator=(auto&& node) { return std::move(node); }
+    // ~SyntaxNode() = default;
 
     //====================================//
-    // SyntaxNode(auto &&val)
-        // requires(!std::same_as<std::decay_t<decltype(val)>, SyntaxNode>)
-        // requires(!std::same_as<decltype(val), SyntaxNode>)
-        // : m_node(std::forward<decltype(val)>(val)) {};
-
     [[nodiscard]] NodeType get_node_type() const;
     //====================================//
 };
