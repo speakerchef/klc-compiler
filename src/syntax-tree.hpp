@@ -1,11 +1,15 @@
 #pragma once
 
-#include "include/utils.hpp"
-#include "tokenizer.hpp"
+#include "syntax-tree.hpp"
+#include <concepts>
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
+#include <print>
+#include <type_traits>
 #include <unordered_map>
+#include <variant>
+#include <vector>
 
 /*
  * Syntax Examples:
@@ -25,29 +29,61 @@ enum class BinOp {
     DIV,
 };
 
-struct NodeBinaryExpr { // eg. a + b or 4 * 5
-    std::unique_ptr<NodeExpr> left;
-    std::unique_ptr<NodeExpr> right;
-    BinOp op;
+enum class NodeType {
+    SYNTAX_NODE,
+    EXPR_NODE,
+    EXPR_BIN,
+    EXPR_UNARY,
+    VAR_IDENT,
+    VAR_DECL,
+    LIT_INT,
+    STMT_EXIT,
 };
 
-// struct NodeUnaryExpr {
-//     std::unique_ptr<NodeExpr> right; // right recursed
-//     BinOp op;
-// };
+enum class VarType {
+    MUT,
+    CONST,
+};
+
+struct NodeProgram {
+    std::vector<SyntaxNode> program;
+    std::unordered_map<std::string, NodeExpr> var_table;
+
+    auto &lookup_node(const std::string &ident) {
+        if (ident.empty()) {
+            std::println(stderr, "Error: Identifier required.");
+            exit(EXIT_FAILURE);
+        }
+        return var_table.at(ident);
+    }
+};
+
+struct NodeBinaryExpr { // eg. a + b or 4 * 5
+    std::string atom;
+    BinOp op;
+    std::unique_ptr<NodeBinaryExpr> lhs;
+    std::unique_ptr<NodeBinaryExpr> rhs;
+    void print() const;
+private:
+    std::string op_to_string(BinOp bop) const;
+
+
+};
+
+struct NodeUnaryExpr {
+    std::unique_ptr<SyntaxNode> right; // right recursed
+    BinOp op;
+};
 
 struct NodeIdentifier {
     std::string name; // used for variable lookup
 };
 
 // Variables
-struct NodeVarDeclarator {
-    NodeIdentifier ident;
-    std::unique_ptr<NodeExpr> value; // variable value; can be expr or literal
-};
 struct NodeVarDeclaration {
-    std::string kind;             // let, const
-    NodeVarDeclarator declarator; // literal, expression
+    VarType kind; // mut, const
+    NodeIdentifier ident;
+    std::unique_ptr<SyntaxNode> value;
 };
 
 struct NodeIntLiteral {
@@ -55,14 +91,7 @@ struct NodeIntLiteral {
 };
 
 struct NodeStmtExit {
-    std::unique_ptr<NodeExpr> exit_code;
-};
-
-struct SyntaxNodev3 {
-    std::variant<std::unique_ptr<NodeExpr>, NodeBinaryExpr, NodeIdentifier,
-                 NodeVarDeclarator, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit>
-        node;
+    std::unique_ptr<SyntaxNode> exit_code;
 };
 
 struct NodeExpr {
@@ -71,28 +100,17 @@ struct NodeExpr {
 
 struct SyntaxNode {
   public:
-    std::variant<std::unique_ptr<NodeExpr>, NodeBinaryExpr, 
-    NodeIdentifier, NodeVarDeclarator, NodeVarDeclaration, 
-    NodeIntLiteral, NodeStmtExit> m_node;
+    std::variant<std::unique_ptr<NodeExpr>, NodeBinaryExpr, NodeUnaryExpr,
+                 NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
+                 NodeStmtExit>
+        m_node;
 
     //====================================//
-    ~SyntaxNode() = default;
-    [[nodiscard]] TokenType get_node_type() const;
-    inline void set_node_value(auto &&node_val);
-    //====================================//
-};
+    // SyntaxNode(auto &&val)
+        // requires(!std::same_as<std::decay_t<decltype(val)>, SyntaxNode>)
+        // requires(!std::same_as<decltype(val), SyntaxNode>)
+        // : m_node(std::forward<decltype(val)>(val)) {};
 
-class SyntaxTree {
-  public:
+    [[nodiscard]] NodeType get_node_type() const;
     //====================================//
-    void push_node(SyntaxNode &&node);
-    [[nodiscard]] inline auto& lookup_node(const std::string& ident) const;
-    [[nodiscard]] inline const std::vector<SyntaxNode>& get_called_nodes();
-    [[nodiscard]] inline const std::unordered_map<std::string, NodeExpr>& get_var_table() const;
-    [[nodiscard]] inline const SyntaxNode& peek() const;
-    //====================================//
-
-  private:
-    std::vector<SyntaxNode> m_called_nodes{};
-    std::unordered_map<std::string, NodeExpr> m_var_table;
 };

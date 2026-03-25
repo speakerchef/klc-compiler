@@ -8,8 +8,9 @@ set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(klc
     ./src/klc-compiler.cpp
-    ./src/tokenizer.cpp
+    ./src/lexer.cpp
     ./src/parser.cpp
+    ./src/syntax-tree.cpp
     ./src/code-generator.cpp
 )
 

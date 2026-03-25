@@ -1,5 +1,7 @@
+#include "syntax-tree.hpp"
+#include "lexer.hpp"
+#include "parser.hpp"
 #include "include/utils.hpp"
-#include "tokenizer.hpp"
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -24,12 +26,10 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    std::ofstream o_stream("./gen_asm.s");
-    o_stream << ".global _start\n.align 4\n_start:\n";
-
     // Process
-    Tokenizer tokenizer{ std::move(o_stream), std::move(file) };
-    std::vector<Token> tokens{tokenizer.get_tokens()};
+    Lexer lexer{ path };
+    Parser parser { lexer.tokenize() };
+    NodeProgram program = parser.create_program();
 
     println("Successful Compilation!");
 

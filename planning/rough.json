@@ -103,9 +103,6 @@
                     }
                 }
             },
-        look for declarator: (any UNCLASSED_VAR_DEC)
-        look for "="
-        look for Expression:
         }
     }
 

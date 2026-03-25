@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <fstream>
 #include <string>
-#include <variant>
 #include <vector>
 
 enum class TokenType {
@@ -20,32 +19,30 @@ enum class TokenType {
     KW_RETURN,
     KW_LET,
     KW_INT,
-    LIT_INT,
-    LIT_STR,
-    VAR_INT,
-    UNCLASSED_VAR_DEC,
+    BIN_OP,
     OP_EQUALS,
-    OP_PLUS,
-    OP_MINUS,
+    OP_ADD,
+    OP_SUB,
+    OP_MULT,
+    OP_DIV,
+    DELIM_LPAREN,
+    DELIM_RPAREN,
+    LIT_INT,
+    VAR_IDENT,
 };
 
 typedef struct Token {
     TokenType type;
-    std::variant<int, std::string> value;
+    std::string value;
 } Token;
 
-class Tokenizer {
+class Lexer {
   public:
-    Tokenizer(std::ofstream &&os, std::ifstream &&is);
-    ~Tokenizer();
+    Lexer(const std::string &path) noexcept;
 
     [[nodiscard]] std::optional<Token> peek(size_t offset) const;
     std::optional<Token> consume();
-    void tokenize();
-
-    inline std::vector<Token> get_tokens() const {
-        return m_tokens;
-    }
+    std::vector<Token> tokenize();
 
   private:
     std::vector<Token> m_tokens;
@@ -55,5 +52,4 @@ class Tokenizer {
 
     /*==========================================================*/
     [[nodiscard]] Token classify_token(std::string &buf) noexcept;
-
 };
