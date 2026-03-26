@@ -47,7 +47,7 @@ class Lexer {
   public:
     Lexer(const std::string &path) noexcept;
 
-    [[nodiscard]] std::optional<Token> peek(size_t offset) const;
+    [[nodiscard]] std::optional<Token> peek(const size_t offset) const;
     std::optional<Token> consume();
     std::vector<Token> tokenize();
 
@@ -58,5 +58,5 @@ class Lexer {
     std::ofstream m_ofs;
 
     /*==========================================================*/
-    [[nodiscard]] Token classify_token(std::string &buf) noexcept;
+    [[nodiscard]] Token classify_token(const std::string &buf) noexcept;
 };

@@ -49,14 +49,14 @@ enum class VarType {
 
 struct NodeProgram {
     std::vector<SyntaxNode> main;
-    std::unordered_map<std::string, NodeExpr> var_table;
+    std::unordered_map<std::string, SyntaxNode> var_table;
 
-    auto &lookup_node(const std::string &ident) {
+    SyntaxNode* lookup_node(const std::string &ident) {
         if (ident.empty()) {
             std::println(stderr, "Error: Identifier required.");
             exit(EXIT_FAILURE);
         }
-        return var_table.at(ident);
+        return &var_table.at(ident);
     }
 };
 
@@ -65,7 +65,14 @@ struct NodeBinaryExpr { // eg. a + b or 4 * 5
     BinOp op;
     std::unique_ptr<NodeBinaryExpr> lhs;
     std::unique_ptr<NodeBinaryExpr> rhs;
+    // NodeBinaryExpr* lhs;
+    // NodeBinaryExpr* rhs;
     LocData loc;
+
+    // NodeBinaryExpr(const NodeBinaryExpr& node) = default;
+    // NodeBinaryExpr(NodeBinaryExpr&& node) = default;
+    // NodeBinaryExpr operator=(NodeBinaryExpr&& node) { return std::move(node); };
+    // ~NodeBinaryExpr() { free(lhs); free(rhs); }
 
     void print() const;
 
@@ -123,5 +130,6 @@ struct SyntaxNode {
 
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;
+    [[nodiscard]] const SyntaxNode* get_node() const;
     //====================================//
 };

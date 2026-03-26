@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <print>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -20,7 +21,7 @@ Lexer::Lexer(const std::string& path) noexcept : m_ifs(path)
 }
 
 /* */
-std::optional<Token> Lexer::peek(size_t offset) const {
+std::optional<Token> Lexer::peek(const size_t offset) const {
     if (m_tokens.empty() || 
         (m_token_ptr + offset) >= m_tokens.size()) {
         return std::nullopt;
@@ -82,15 +83,16 @@ std::vector<Token> Lexer::tokenize() {
 }
 
 /* */
-Token Lexer::classify_token(std::string &buf) noexcept {
+Token Lexer::classify_token(const std::string &buf) noexcept {
     Token tok{};
 
     if (buf.find_first_not_of("0123456789"))   { tok.type = TokenType::LIT_INT; }
-    else if (buf.find_first_not_of("=+-*/"))    { tok.type = TokenType::BIN_OP; }
+    else if (buf.find_first_not_of("+-*/"))    { tok.type = TokenType::BIN_OP; }
 
     else if (buf == ";")    { tok.type = TokenType::DELIM_SEMI; } 
     else if (buf == "exit") { tok.type = TokenType::KW_EXIT; } 
     else if (buf == "let")  { tok.type = TokenType::KW_LET; } 
+    else if (buf == "=")    { tok.type = TokenType::OP_EQUALS; } 
     else if (buf == "(")    { tok.type = TokenType::DELIM_LPAREN; } 
     else if (buf == ")")    { tok.type = TokenType::DELIM_RPAREN; } 
     else                    { tok.type = TokenType::VAR_IDENT; }

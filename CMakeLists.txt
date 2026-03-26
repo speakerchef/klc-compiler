@@ -14,5 +14,23 @@ add_executable(klc
     ./src/code-generator.cpp
 )
 
+add_library(klc_lib
+    ./src/klc-compiler.cpp
+    ./src/lexer.cpp
+    ./src/parser.cpp
+    ./src/syntax-tree.cpp
+    ./src/code-generator.cpp
+)
+
+target_include_directories(klc_lib PUBLIC src)
+
+target_link_libraries(klc PRIVATE klc_lib)
+
+add_executable(test
+    ./tests/CodeGeneratorTests.cpp
+)
+target_link_libraries(test PRIVATE klc_lib)
 
 target_compile_options(klc PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
+target_compile_options(test PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
+

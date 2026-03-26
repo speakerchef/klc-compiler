@@ -18,7 +18,7 @@ std::optional<Token> Parser::next() {
     }
     return m_tokens.at(m_tok_ptr++);
 }
-std::optional<Token> Parser::peek(size_t offset = 0) const {
+std::optional<Token> Parser::peek(const size_t offset = 0) const {
     if (m_tokens.empty() || (offset + m_tok_ptr) >= m_tokens.size()) {
         return std::nullopt;
     }
@@ -29,9 +29,9 @@ bool Parser::validate_token(const size_t offset, const TokenType ttype) const {
     return (peek(offset).has_value() && peek(offset).value().type == ttype);
 }
 
-std::tuple<float, float> Parser::get_binding_power(BinOp bop) const {
+std::tuple<float, float> Parser::get_binding_power(const BinOp bop) const {
     switch (bop) {
-    case BinOp::EQ:   { return {0, 0.1}; }
+    // case BinOp::EQ:   { return {0, 0.1}; }
     case BinOp::SUB:
     case BinOp::ADD:  { return {1, 1.1}; }
     case BinOp::DIV:
@@ -44,12 +44,12 @@ BinOp Parser::set_op(const std::string &optype) const {
     else if (optype == "-") { return BinOp::SUB; }
     else if (optype == "*") { return BinOp::MULT; }
     else if (optype == "/") { return BinOp::DIV; }
-    else if (optype == "=") { return BinOp::EQ; }
+    // else if (optype == "=") { return BinOp::EQ; }
     std::println(stderr, "Error: Invalid binary operator.");
     exit(EXIT_FAILURE);
 }
 
-NodeVarDeclaration Parser::parse_declaration(TokenType ttype) {
+NodeVarDeclaration Parser::parse_declaration(const TokenType ttype) {
     NodeVarDeclaration dec{};
     dec.value = std::make_unique<SyntaxNode>();
 
@@ -66,21 +66,21 @@ NodeVarDeclaration Parser::parse_declaration(TokenType ttype) {
 
     dec.ident = NodeIdentifier({
         .name = std::move(peek().value().value),
-        .loc = std::move(peek().value().loc)
+        .loc = std::move(next().value().loc)
     });
-    // next(); // eat `=`
+    next(); // eat `=`
 
     std::println("ident: {}", dec.ident.name);
     dec.value->m_node = std::move(*parse_expr(0));
     m_var_table.insert({ dec.ident.name, dec.value.get() });
 
-    std::get<NodeBinaryExpr>(m_var_table.at(dec.ident.name)->m_node).print();
-    std::println();
+    // std::get<NodeBinaryExpr>(m_var_table.at(dec.ident.name)->m_node).print();
+    // std::println();
 
     return dec;
 }
 
-std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(float min_rbp) {
+std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(const float min_rbp) {
     if (!peek().has_value()) {
         std::println(stderr, "Error: Invalid expression.");
         exit(EXIT_FAILURE);
@@ -93,7 +93,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(float min_rbp) {
         next();
         lhs = parse_expr(0);
     }
-
+    std::println("Atom: {}", tok.value);
     lhs->atom = std::move( tok.value );
     lhs->loc = std::move( tok.loc );
     std::println("Line: {}", lhs->loc.line);
@@ -123,7 +123,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(float min_rbp) {
     return lhs;
 }
 
-NodeStmtExit Parser::parse_stmt_exit(TokenType ttype) {
+NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype) {
     NodeStmtExit exit;
     NodeBinaryExpr expr;
 
@@ -141,6 +141,7 @@ NodeStmtExit Parser::parse_stmt_exit(TokenType ttype) {
         }
         default: {
             auto res = std::move(*parse_expr(0));
+            std::print("Print at exit: ");
             res.print();
             std::println();
             exit.exit_code->m_node = std::move(res);
@@ -164,11 +165,11 @@ NodeProgram&& Parser::create_program() {
                         peeked.loc.line, peeked.loc.col);
                     exit(EXIT_FAILURE);
                 }
-                // if (!validate_token(1, TokenType::OP_EQUALS)) {
-                //     std::println("[{}:{}] Error: Missing `=` after variable declaration `{}`", 
-                //                  peeked.loc.line, peeked.loc.col, peek(0).value().value);
-                //     exit(EXIT_FAILURE);
-                // }
+                if (!validate_token(1, TokenType::OP_EQUALS)) {
+                    std::println("[{}:{}] Error: Missing `=` after variable declaration `{}`", 
+                                 peeked.loc.line, peeked.loc.col, peek(0).value().value);
+                    exit(EXIT_FAILURE);
+                }
                 m_program.main.emplace_back(parse_declaration(peeked.type));
                 break;
             }
