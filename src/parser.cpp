@@ -93,11 +93,10 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(const float min_rbp) {
         next();
         lhs = parse_expr(0);
     }
-    std::println("Atom: {}", tok.value);
     lhs->atom = std::move( tok.value );
     lhs->loc = std::move( tok.loc );
-    std::println("Line: {}", lhs->loc.line);
-    std::println("Col: {}", lhs->loc.col);
+    // std::println("Line: {}", lhs->loc.line);
+    // std::println("Col: {}", lhs->loc.col);
 
     if (!peek(1).has_value() && tok.type != TokenType::DELIM_SEMI) {
         std::println(stderr, "[{}:{}] Error: Missing `;`.", lhs->loc.line,lhs->loc.col);
@@ -184,5 +183,6 @@ NodeProgram&& Parser::create_program() {
             }
         }
     }
+    m_program.var_table = std::move(m_var_table);
     return std::move(m_program);
 }

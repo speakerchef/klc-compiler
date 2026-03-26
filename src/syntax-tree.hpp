@@ -49,14 +49,14 @@ enum class VarType {
 
 struct NodeProgram {
     std::vector<SyntaxNode> main;
-    std::unordered_map<std::string, SyntaxNode> var_table;
+    std::unordered_map<std::string, SyntaxNode*> var_table;
 
     SyntaxNode* lookup_node(const std::string &ident) {
         if (ident.empty()) {
             std::println(stderr, "Error: Identifier required.");
             exit(EXIT_FAILURE);
         }
-        return &var_table.at(ident);
+        return var_table.at(ident);
     }
 };
 

@@ -20,19 +20,38 @@ template<typename T>
     std::string ident;
     auto lres = 0;
     auto rres = 0;
-    node.print();
+    // node.print();
 
     if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
-            std::println("IDENT AT EVAL EXPR: {}", node.atom);
+        // std::println("IDENT AT EVAL EXPR: {}", node.atom);
         ident = node.atom;
         auto& id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node);
         auto lhs = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node).lhs.get();
         auto rhs = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node).rhs.get();
 
         // id_node.print();
-        // if (lhs) res = eval_expr<int>(*lhs);
-        // if (rhs) res = eval_expr<int>(*rhs);
+        if (lhs) lres = eval_expr<int>(*lhs);
+        if (rhs) rres = eval_expr<int>(*rhs);
 
+        switch (node.op) {
+            case BinOp::ADD: {
+                node.atom = std::to_string(lres + rres);
+                break;
+            }
+            case BinOp::SUB: {
+                node.atom = std::to_string(lres - rres);
+                break;
+            }
+            case BinOp::MULT: {
+                node.atom = std::to_string(lres * rres);
+                break;
+            }
+            case BinOp::DIV: {
+                node.atom = std::to_string(lres / rres);
+                break;
+            }
+        }
+        
     }
     if (!node.lhs && !node.rhs) {
         return std::stoi(node.atom);

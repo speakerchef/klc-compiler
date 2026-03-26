@@ -1,1 +1,7 @@
-let foenem = 4 * 6 + 5;
+let a = 4 * 6 + 5;
+
+let b = a + 5;
+
+let c = b - a;
+
+let d = c * c;
