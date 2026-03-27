@@ -3,8 +3,6 @@
 #include "parser.hpp"
 #include "include/utils.hpp"
 #include <cassert>
-#include <cctype>
-#include <cstddef>
 #include <cstdlib>
 #include <fstream>
 #include <print>
@@ -19,9 +17,8 @@ int main(int argc, char **argv) {
     }
 
     string path = argv[1];
-    std::ifstream file(path);
 
-    if (!file.is_open()) {
+    if (std::ifstream file(path); !file.is_open()) {
         println(stderr, ERR_FILE);
         return EXIT_FAILURE;
     }

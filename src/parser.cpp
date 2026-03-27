@@ -32,11 +32,12 @@ bool Parser::validate_token(const size_t offset, const TokenType ttype) const {
 std::tuple<float, float> Parser::get_binding_power(const BinOp bop) const {
     switch (bop) {
     // case BinOp::EQ:   { return {0, 0.1}; }
-    case BinOp::SUB:
+    case BinOp::SUB:  [[fallthrough]];
     case BinOp::ADD:  { return {1, 1.1}; }
-    case BinOp::DIV:
+    case BinOp::DIV:  [[fallthrough]];
     case BinOp::MULT: { return {2, 2.1}; }
     }
+
 }
 
 BinOp Parser::set_op(const std::string &optype) const {
@@ -85,26 +86,26 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(const float min_rbp) {
         std::println(stderr, "Error: Invalid expression.");
         exit(EXIT_FAILURE);
     }
-    auto tok = peek().value();
-
 
     auto lhs = std::make_unique<NodeBinaryExpr>();
-    if (tok.type == TokenType::DELIM_LPAREN) {
-        next();
+    if (peek().value().type == TokenType::DELIM_LPAREN) {
+        next(); // eat '('
         lhs = parse_expr(0);
+        next(); // eat ')'
     }
-    lhs->atom = std::move( tok.value );
-    lhs->loc = std::move( tok.loc );
-    // std::println("Line: {}", lhs->loc.line);
-    // std::println("Col: {}", lhs->loc.col);
-
-    if (!peek(1).has_value() && tok.type != TokenType::DELIM_SEMI) {
+    if (validate_token(0, TokenType::DELIM_SEMI)) return lhs;
+    if (!peek(1).has_value() && peek().value().type != TokenType::DELIM_SEMI) {
         std::println(stderr, "[{}:{}] Error: Missing `;`.", lhs->loc.line,lhs->loc.col);
         exit(EXIT_FAILURE);
     }
+
+    auto tok = peek().value();
+    lhs->atom = std::move( tok.value );
+    lhs->loc = tok.loc ;
     next();
 
     while (validate_token(0, TokenType::BIN_OP)) {
+
         BinOp op = set_op(peek().value().value);
         auto [lbp, rbp] = get_binding_power(op);
 
@@ -114,7 +115,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr(const float min_rbp) {
         auto rhs = parse_expr(rbp);
         auto node = std::make_unique<NodeBinaryExpr>();
         node->op = op;
-        node->loc = std::move(lhs->loc);
+        node->loc = lhs->loc;
         node->lhs = std::move(lhs);
         node->rhs = std::move(rhs);
         lhs = std::move(node);

@@ -28,7 +28,6 @@ enum class BinOp {
     SUB,
     MULT,
     DIV,
-    EQ,
 };
 
 enum class NodeType {
@@ -51,7 +50,7 @@ struct NodeProgram {
     std::vector<SyntaxNode> main;
     std::unordered_map<std::string, SyntaxNode*> var_table;
 
-    SyntaxNode* lookup_node(const std::string &ident) {
+    [[nodiscard]] SyntaxNode* lookup_node(const std::string &ident) const {
         if (ident.empty()) {
             std::println(stderr, "Error: Identifier required.");
             exit(EXIT_FAILURE);

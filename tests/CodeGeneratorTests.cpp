@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 int main() {
@@ -14,6 +15,7 @@ int main() {
     Parser parser{ lex.tokenize() };
     NodeProgram prog = parser.create_program();
     std::vector<std::reference_wrapper<NodeBinaryExpr>> res;
+    res.reserve(20);
     for (auto& node : prog.main) {
         res.emplace_back(std::get<NodeBinaryExpr>(std::get<NodeVarDeclaration>(node.m_node).value->m_node));
     }
@@ -25,21 +27,33 @@ int main() {
     constexpr auto BOLD     = "\033[1m";
     constexpr auto RESET    = "\033[0m";
     constexpr auto B_YELLOW = "\033[1;33m";
+    int success_count = 0;
+    int total_count = 0;
 
-    auto run_test = [&](const int tnum, int expected) {
+    auto run_test = [&](const size_t tnum, const int expected) {
         auto t1_pass = std::format("{}Test {} Passed!{}", GREEN, tnum, RESET);
         auto t1_fail = std::format("{}Test {} Failed!{}", RED, tnum, RESET);
 
-        auto t = gen.eval_expr<int>( res.at(tnum - 1) );
+        try {
+            auto t = gen.eval_expr<int>( res.at(tnum - 1) );
+            std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
+            if (t == expected) success_count++;
+            total_count++;
+            std::println("{}", (t == expected) ? t1_pass : t1_fail);
+        }
+        catch (std::exception& e) {
+        std::println(stderr, "Exception: {}", e.what());
+        }
 
-        std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
-        std::println("{}", (t == expected) ? t1_pass : t1_fail);
     };
     std::println("{}========= [TEST] CodeGenerator::eval_expr() ========={}", B_YELLOW, RESET);
-    run_test(1, 29);
-    run_test(2, 34);
+    run_test(1, 0);
+    run_test(2, 5);
     run_test(3, 5);
-    run_test(4, 25);
+    run_test(4, 30);
+    run_test(5, 25);
+    run_test(6, 16);
+    std::println("{}Total Passed: {}/{}{}", success_count != total_count ? B_YELLOW : GREEN, success_count, total_count, RESET);
 
     return 0;
 }

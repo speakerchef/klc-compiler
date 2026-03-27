@@ -3,6 +3,9 @@
 #include "syntax-tree.hpp"
 #include <cstddef>
 #include <fstream>
+#include <memory>
+#include <string>
+#include <vector>
 
 enum class Marker{
     END
@@ -10,7 +13,7 @@ enum class Marker{
 
 class CodeGenerator {
   public:
-    CodeGenerator(NodeProgram&& prog) noexcept;
+     explicit CodeGenerator(NodeProgram&& prog) noexcept;
     ~CodeGenerator();
 
     void emit();
@@ -25,15 +28,15 @@ template<typename T>
     if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
         // std::println("IDENT AT EVAL EXPR: {}", node.atom);
         ident = node.atom;
-        auto& id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node);
-        auto lhs = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node).lhs.get();
-        auto rhs = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node).rhs.get();
+        const auto & id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node);
+        const auto lhs = id_node.lhs.get();
+        const auto rhs = id_node.rhs.get();
 
         // id_node.print();
         if (lhs) lres = eval_expr<int>(*lhs);
         if (rhs) rres = eval_expr<int>(*rhs);
 
-        switch (node.op) {
+        switch (id_node.op) {
             case BinOp::ADD: {
                 node.atom = std::to_string(lres + rres);
                 break;
@@ -50,10 +53,15 @@ template<typename T>
                 node.atom = std::to_string(lres / rres);
                 break;
             }
+            default: {
+                std::println(stderr, "Goofy, this operator is not supported");
+                exit(EXIT_FAILURE);
+            }
         }
         
     }
     if (!node.lhs && !node.rhs) {
+        m_cached_var[ident] = node.atom; 
         return std::stoi(node.atom);
     }
 
@@ -65,6 +73,8 @@ template<typename T>
         case BinOp::SUB:  return lres - rres;
         case BinOp::MULT: return lres * rres;
         case BinOp::DIV:  return lres / rres;
+    default: assert(false && "Unknown operator!");
+
     }
 }
 
@@ -73,13 +83,11 @@ template<typename T>
     size_t m_node_ptr = 0;
     size_t m_stack_sz = 0;
     NodeProgram m_program;
+    std::unordered_map<std::string, std::string> m_cached_var;
 
     //===================================
 
-    [[nodiscard]] const SyntaxNode* peek(const size_t offset) const;
+    [[nodiscard]] const SyntaxNode* peek(size_t offset) const;
     [[maybe_unused]] const SyntaxNode* next();
     [[nodiscard]] std::string gen_var_declaration();
-
-    // [[nodiscard]] std::string eval_expr(SyntaxNode& node, const std::string& ident);
-
 };

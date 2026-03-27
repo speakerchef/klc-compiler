@@ -9,7 +9,7 @@
 
 class Parser {
   public:
-    Parser(std::vector<Token> &&toks) noexcept;
+    explicit Parser(std::vector<Token> &&toks) noexcept;
 
     NodeProgram &&create_program();
 
@@ -21,12 +21,12 @@ class Parser {
     std::vector<SyntaxNode> m_ast;
     std::unordered_map<std::string, SyntaxNode*> m_var_table;
 
-    std::tuple<float, float> get_binding_power(const BinOp bop) const;
-    bool validate_token(const size_t offset, const TokenType ttype) const;
-    [[nodiscard]]    std::optional<Token> peek(const size_t offset) const;
+    [[nodiscard]] std::tuple<float, float> get_binding_power(BinOp bop) const;
+    [[nodiscard]] bool validate_token(size_t offset, TokenType ttype) const;
+    [[nodiscard]]    std::optional<Token> peek(size_t offset) const;
     [[maybe_unused]] std::optional<Token> next();
-    [[nodiscard]]    NodeVarDeclaration parse_declaration(const TokenType ttype);
-    [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr(const float min_rbp);
+    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype);
+    [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr(float min_rbp);
     [[nodiscard]]    BinOp set_op(const std::string& optype) const;
-    [[nodiscard]]    NodeStmtExit parse_stmt_exit(const TokenType ttype);
+    [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype);
 };

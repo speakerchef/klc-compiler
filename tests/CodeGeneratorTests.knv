@@ -1,7 +1,11 @@
-let a = 4 * 6 + 5;
+let a = 2 * 3 - 6;
 
 let b = a + 5;
 
 let c = b - a;
 
+let e = b * b + c;
+
 let d = c * c;
+
+let f = 2 * (3 + 5);

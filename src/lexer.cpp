@@ -1,9 +1,6 @@
 #include "lexer.hpp"
 #include "include/utils.hpp"
 #include <cassert>
-#include <cctype>
-#include <cerrno>
-#include <cstddef>
 #include <cstdlib>
 #include <fstream>
 #include <print>
@@ -54,7 +51,7 @@ std::vector<Token> Lexer::tokenize() {
         } else if (std::isspace(ch)) {
             col_cnt++;
             if (!buf.empty()) {
-                m_tokens.emplace_back(this->classify_token(buf));
+                m_tokens.emplace_back(classify_token(buf));
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
 
                 tok_idx++;
@@ -64,13 +61,13 @@ std::vector<Token> Lexer::tokenize() {
         } else if (std::ispunct(ch)) { // Operators & Symbols
             col_cnt++;
             if (!buf.empty()) {
-                m_tokens.emplace_back(this->classify_token(buf));
+                m_tokens.emplace_back(classify_token(buf));
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
                 tok_idx++;
                 buf.clear();
             }
             std::string o{ch};
-            m_tokens.emplace_back(this->classify_token(o));
+            m_tokens.emplace_back(classify_token(o));
             m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
             tok_idx++;
         }

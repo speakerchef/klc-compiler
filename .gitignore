@@ -5,3 +5,4 @@ sandbox/*
 !sandbox/*.s
 !sandbox/*.asm
 .DS_Store
+.idea/

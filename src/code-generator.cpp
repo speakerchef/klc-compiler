@@ -1,12 +1,7 @@
 #include "code-generator.hpp"
 #include "include/utils.hpp"
 #include "syntax-tree.hpp"
-#include <cctype>
-#include <concepts>
-#include <cstddef>
 #include <cstdlib>
-#include <memory>
-#include <type_traits>
 #include <variant>
 
 using std::get;
