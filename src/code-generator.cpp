@@ -2,6 +2,7 @@
 #include "include/utils.hpp"
 #include "syntax-tree.hpp"
 #include <cstdlib>
+#include <print>
 
 CodeGenerator::CodeGenerator(NodeProgram &&prog) noexcept
     : m_os("./gen_asm.s"), m_program(std::move(prog)) {
@@ -35,10 +36,10 @@ const SyntaxNode* CodeGenerator::next() {
 
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     const auto& [kind, ident, value, loc] = node;
-    const std::string id = ident.name;
     const auto& bin_expr = std::get<NodeBinaryExpr>(value->m_node);
     std::println("Num vars: {}", bin_expr.var_count);
     // bin_expr.print();
+
     if ( expand_stack ) {
         size_t incr = bin_expr.var_count > 2 ? 16 * bin_expr.var_count : 16;
         m_stack_sz += incr;
@@ -48,31 +49,30 @@ void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     }
 
     int stack_loc = emit_expr(bin_expr);
-    std::println("STACK LOC:{} for ID: {}", stack_loc, id);
-    m_cached_var.insert({ id, stack_loc + 8 });
+    std::println("STACK LOC:{} for ID: {}", stack_loc, ident.name);
+    m_cached_var.insert({ ident.name, stack_loc + 8 });
     // m_cached_var.insert({ id, stack_loc  });
 }
 
 int CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     // node.print();
+    const auto n_atom_id = std::get_if<NodeIdentifier>(&node.atom);
+    const auto n_atom_lit = std::get_if<NodeIntLiteral>(&node.atom);
 
-    if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
-        int cached_loc = m_cached_var.at(node.atom) - 8;
+    if (n_atom_id) {
+        std::println("n_atom_id: {}", n_atom_id->name);
+        int cached_loc = m_cached_var.at(n_atom_id->name) - 8;
         return cached_loc;
     }
-
-    if (!node.atom.empty() && std::isdigit(node.atom.front())) {
-        // std::println("NUMERIC: {}", node.atom);
-        // std::println("POINTER: {}", m_stack_ptr);
-        // if (m_stack_ptr % 16 == 0) {
-
-        // }
-        m_os << "\tMOV x8, " << node.atom << '\n';
+    if (n_atom_lit) {
+        std::println("n_atom_lit: {}", n_atom_lit->value);
+        m_os << "\tMOV x8, " << n_atom_lit->value << '\n';
         m_os << "\tSTR x8, [sp, " << m_stack_ptr << "]" << '\n';
         m_stack_ptr -= 8;
         if (!node.lhs && !node.rhs) return m_stack_ptr;
-        // m_str_count++;
     }
+
+
     // TODO: Rigorously test logic and robustness of curr solution
     int lhs_stk_adr = -1, rhs_stk_adr = -1;
     if (node.lhs) lhs_stk_adr = emit_expr(*node.lhs) + 8; //adr of a = 16

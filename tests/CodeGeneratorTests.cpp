@@ -13,15 +13,16 @@ int main() {
     const std::string path("../tests/CodeGeneratorTests.knv");
     Lexer lex(path);
     Parser parser{ lex.tokenize() };
-    NodeProgram prog = parser.create_program();
+    NodeProgram prog = std::move(parser.create_program());
     std::vector<std::reference_wrapper<NodeBinaryExpr>> bin_expr;
     std::vector<std::reference_wrapper<NodeVarDeclaration>> decl;
     bin_expr.reserve(20);
     decl.reserve(20);
     for (auto& node : prog.main) {
-        bin_expr.emplace_back(std::get<NodeBinaryExpr>(std::get<NodeVarDeclaration>(node.m_node).value->m_node));
+        // bin_expr.emplace_back(std::get<NodeBinaryExpr>(std::get<NodeVarDeclaration>(node.m_node).value->m_node));
         decl.emplace_back(std::get<NodeVarDeclaration>(node.m_node));
     }
+
     CodeGenerator gen(std::move(prog));
 
     constexpr auto GREEN    = "\033[92m";
@@ -63,7 +64,7 @@ int main() {
 
         try {
             // auto t = gen.emit_decl(decl.at( tnum - 1 ));
-            gen.emit_decl(decl.at( tnum - 1 ));
+            gen.emit_decl(std::get<NodeVarDeclaration>(gen.m_program.main.at(0).m_node));
 
             // std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
             // if (t == expected) success_count++;

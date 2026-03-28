@@ -11,7 +11,7 @@ class Parser {
   public:
     explicit Parser(std::vector<Token> &&toks) noexcept;
 
-    NodeProgram &&create_program();
+    NodeProgram&& create_program();
 
   private:
     std::vector<Token> m_tokens;

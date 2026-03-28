@@ -2,11 +2,11 @@
 #include "include/utils.hpp"
 #include <cstddef>
 #include <memory>
+#include <variant>
 
 //====================================//
 NodeType SyntaxNode::get_node_type() const {
     auto node_typer = Overload {
-        [](const std::unique_ptr<NodeExpr>&)           { return NodeType::EXPR_NODE; },
         [](const NodeBinaryExpr&)                      { return NodeType::EXPR_BIN; },
         [](const NodeUnaryExpr&)                       { return NodeType::EXPR_UNARY; },
         [](const NodeIdentifier&)                      { return NodeType::VAR_IDENT; },
@@ -28,7 +28,12 @@ std::string NodeBinaryExpr::op_to_string(const BinOp bop) {
 
 void NodeBinaryExpr::print() const {
     if (!lhs && !rhs) {
-        std::print(" {}", atom);
+        const auto print_v = Overload {
+            [](const NodeIdentifier& val) { std:: print(" {}", val.name); },
+            [](const NodeIntLiteral& val) { std:: print(" {}", val.value); },
+            [](const std::monostate& val) {},
+        };
+        std::visit(print_v, atom);
         return;
     }
 

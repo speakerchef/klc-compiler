@@ -13,20 +13,22 @@ class CodeGenerator {
   public:
      explicit CodeGenerator(NodeProgram&& prog) noexcept;
     ~CodeGenerator();
+    NodeProgram m_program{};
 
     void emit();
 
 template<typename T>
 [[nodiscard]] inline T consteval_expr(NodeBinaryExpr& node) { // use only for compile time eval
-    std::string ident;
     auto lres = 0;
     auto rres = 0;
+    const auto n_atom_id { std::get_if<NodeIdentifier>(&node.atom) };
+    const auto n_atom_lit { std::get_if<NodeIntLiteral>(&node.atom) };
     // node.print();
 
-    if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
+    // if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
+    if (n_atom_id) {
         // std::println("IDENT AT EVAL EXPR: {}", node.atom);
-        ident = node.atom;
-        const auto & id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(ident)->m_node);
+        const auto & id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(n_atom_id->name)->m_node);
         const auto lhs = id_node.lhs.get();
         const auto rhs = id_node.rhs.get();
 
@@ -36,20 +38,20 @@ template<typename T>
 
         switch (id_node.op) {
             case BinOp::ADD: {
-                node.atom = std::to_string(lres + rres);
-                break;
+                // node.atom = std::to_string(lres + rres);
+                return (lres + rres);
             }
             case BinOp::SUB: {
-                node.atom = std::to_string(lres - rres);
-                break;
+                // node.atom = (lres - rres);
+                return (lres - rres);
             }
             case BinOp::MULT: {
-                node.atom = std::to_string(lres * rres);
-                break;
+                // node.atom = (lres * rres);
+                return (lres * rres);
             }
             case BinOp::DIV: {
-                node.atom = std::to_string(lres / rres);
-                break;
+                // node.atom = (lres / rres);
+                return (lres / rres);
             }
             default: {
                 assert(false && "Unknown operator!");
@@ -57,7 +59,7 @@ template<typename T>
         }
         
     }
-    if (!node.lhs && !node.rhs) { return std::stoi(node.atom); }
+    if (!node.lhs && !node.rhs) return n_atom_lit->value;
 
     if (node.lhs) lres = consteval_expr<int>(*node.lhs);
     if (node.rhs) rres = consteval_expr<int>(*node.rhs);
@@ -79,7 +81,6 @@ template<typename T>
     size_t m_stack_sz = 0;
     int32_t m_stack_ptr = 0;
     bool expand_stack = true;
-    NodeProgram m_program;
     std::unordered_map<std::string, int32_t> m_cached_var;
 
     //===================================

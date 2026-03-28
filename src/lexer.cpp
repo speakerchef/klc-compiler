@@ -73,7 +73,7 @@ std::vector<Token> Lexer::tokenize() {
         }
     }
     for (const Token &tok : m_tokens) {
-        std::println("Token value: {}", tok.value);
+        // std::println("Token value: {}", tok.value);
     }
 
     return m_tokens;

@@ -6,12 +6,15 @@
 #include <memory>
 #include <print>
 #include <unordered_map>
-#include <utility>
 #include <variant>
 #include <vector>
 
 struct SyntaxNode;
-struct NodeExpr;
+struct NodeBinaryExpr;
+struct NodeUnaryExpr;
+struct NodeIdentifier;
+struct NodeIntLiteral;
+struct NodeStmtExit;
 
 enum class BinOp {
     ADD,
@@ -49,14 +52,24 @@ struct NodeProgram {
     }
 };
 
+struct NodeIdentifier {
+    std::string name; // used for variable lookup
+    LocData loc;
+};
+
+struct NodeIntLiteral {
+    int value;
+    LocData loc;
+};
+
 struct NodeBinaryExpr { // eg. a + b or 4 * 5
-    std::string atom;
+    std::variant<std::monostate, NodeIdentifier, NodeIntLiteral> atom;
     BinOp op;
     std::unique_ptr<NodeBinaryExpr> lhs;
     std::unique_ptr<NodeBinaryExpr> rhs;
     size_t var_count;
     LocData loc;
-    void print() const;
+    void print() const; // print expr in prefix notation eg. (+ 5 8) === 5 + 8
 
 private:
     [[nodiscard]] static std::string op_to_string(BinOp bop);
@@ -68,21 +81,11 @@ struct NodeUnaryExpr {
     LocData loc;
 };
 
-struct NodeIdentifier {
-    std::string name; // used for variable lookup
-    LocData loc;
-};
-
 // Variables
 struct NodeVarDeclaration {
-    VarType kind; // mut, const
+    VarType kind; // mut, let
     NodeIdentifier ident;
     std::unique_ptr<SyntaxNode> value;
-    LocData loc;
-};
-
-struct NodeIntLiteral {
-    int value;
     LocData loc;
 };
 
