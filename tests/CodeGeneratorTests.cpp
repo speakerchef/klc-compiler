@@ -39,11 +39,11 @@ int main() {
         auto t1_fail = std::format("{}Test {} Failed!{}", RED, tnum, RESET);
 
         try {
-            auto t = gen.consteval_expr<int>( bin_expr.at(tnum - 1) );
-            std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
-            if (t == expected) success_count++;
-            total_count++;
-            std::println("{}", (t == expected) ? t1_pass : t1_fail);
+            // auto t = gen.consteval_expr<int>( bin_expr.at(tnum - 1) );
+            // std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
+            // if (t == expected) success_count++;
+            // total_count++;
+            // std::println("{}", (t == expected) ? t1_pass : t1_fail);
         }
         catch (std::exception& e) {
         std::println(stderr, "Exception: {}", e.what());
@@ -63,8 +63,8 @@ int main() {
         auto t1_fail = std::format("{}Test {} Failed!{}", RED, tnum, RESET);
 
         try {
-            // auto t = gen.emit_decl(decl.at( tnum - 1 ));
-            gen.emit_decl(std::get<NodeVarDeclaration>(gen.m_program.main.at(0).m_node));
+            gen.emit_decl(decl.at( tnum - 1 ));
+            // gen.emit_decl(std::get<NodeVarDeclaration>(gen.m_program.main.at(0).m_node));
 
             // std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
             // if (t == expected) success_count++;

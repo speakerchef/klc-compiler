@@ -10,7 +10,7 @@ CodeGenerator::CodeGenerator(NodeProgram &&prog) noexcept
         std::println(stderr, ERR_FILE);
         exit(EXIT_FAILURE);
     }
-    m_os << ".global _start\n.align 4\n_start:\n";
+    m_os << ".global _main\n.align 4\n_main:\n";
 }
 CodeGenerator::~CodeGenerator() {
     // Epilogue (kinda)
@@ -34,10 +34,68 @@ const SyntaxNode* CodeGenerator::next() {
     return &m_program.main.at( m_node_ptr++ );
 }
 
+void CodeGenerator::emit_epilogue() {
+    m_os << std::format("\tADD sp, sp, {}\n", m_stack_sz);
+}
+
+int CodeGenerator::consteval_expr(const NodeBinaryExpr& node) { // use only for compile time eval
+    auto lres = 0;
+    auto rres = 0;
+    const auto n_atom_id { std::get_if<NodeIdentifier>(&node.atom) };
+    const auto n_atom_lit { std::get_if<NodeIntLiteral>(&node.atom) };
+    // node.print();
+
+    // if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
+    if (n_atom_id) {
+        // std::println("IDENT AT EVAL EXPR: {}", node.atom);
+        const auto & id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(n_atom_id->name)->m_node);
+        const auto lhs = id_node.lhs.get();
+        const auto rhs = id_node.rhs.get();
+
+        // id_node.print();
+        if (lhs) lres = consteval_expr(*lhs);
+        if (rhs) rres = consteval_expr(*rhs);
+
+        switch (id_node.op) {
+            case BinOp::ADD: {
+                // node.atom = std::to_string(lres + rres);
+                return (lres + rres);
+            }
+            case BinOp::SUB: {
+                // node.atom = (lres - rres);
+                return (lres - rres);
+            }
+            case BinOp::MULT: {
+                // node.atom = (lres * rres);
+                return (lres * rres);
+            }
+            case BinOp::DIV: {
+                // node.atom = (lres / rres);
+                return (lres / rres);
+            }
+            default: {
+                assert(false && "Unknown operator!");
+            }
+        }
+    }
+    if (!node.lhs && !node.rhs) return n_atom_lit->value;
+
+    if (node.lhs) lres = consteval_expr(*node.lhs);
+    if (node.rhs) rres = consteval_expr(*node.rhs);
+    
+    switch (node.op) {
+        case BinOp::ADD:  return lres + rres;
+        case BinOp::SUB:  return lres - rres;
+        case BinOp::MULT: return lres * rres;
+        case BinOp::DIV:  return lres / rres;
+        default: assert(false && "Unknown operator!");
+    }
+}
+
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     const auto& [kind, ident, value, loc] = node;
-    const auto& bin_expr = std::get<NodeBinaryExpr>(value->m_node);
-    std::println("Num vars: {}", bin_expr.var_count);
+    const auto& bin_expr = std::get<NodeBinaryExpr>(value->m_node); // can only be an expr at this moment
+    // std::println("Num vars: {}", bin_expr.var_count);
     // bin_expr.print();
 
     if ( expand_stack ) {
@@ -49,23 +107,40 @@ void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     }
 
     int stack_loc = emit_expr(bin_expr);
-    std::println("STACK LOC:{} for ID: {}", stack_loc, ident.name);
+    // std::println("STACK LOC:{} for ID: {}", stack_loc, ident.name);
     m_cached_var.insert({ ident.name, stack_loc + 8 });
     // m_cached_var.insert({ id, stack_loc  });
 }
 
-int CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
+void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node) {
+    //exitcode can ONLY be an INTEGER
+    const auto n_expr = std::get_if<NodeBinaryExpr>(&node.exit_code->m_node);
+    const auto n_int_lit = std::get_if<NodeIntLiteral>(&node.exit_code->m_node);
+    if (n_int_lit) {
+        m_os << std::format("\tMOV x0, #{}\n", n_int_lit->value);
+        m_os << "\tMOV x16, #1\n";
+        emit_epilogue();
+        m_os << "\tBL  _exit\n";
+    }
+    if (n_expr) {
+        const int64_t stack_pos = emit_expr(*n_expr) + 8;
+        m_os << std::format("\tLDR x0, [sp, {}]\n", stack_pos);
+        m_os << "\tMOV x16, #1\n";
+        emit_epilogue();
+        m_os << "\tBL  _exit\n";
+    }
+}
+
+int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     // node.print();
     const auto n_atom_id = std::get_if<NodeIdentifier>(&node.atom);
     const auto n_atom_lit = std::get_if<NodeIntLiteral>(&node.atom);
 
     if (n_atom_id) {
-        std::println("n_atom_id: {}", n_atom_id->name);
         int cached_loc = m_cached_var.at(n_atom_id->name) - 8;
         return cached_loc;
     }
     if (n_atom_lit) {
-        std::println("n_atom_lit: {}", n_atom_lit->value);
         m_os << "\tMOV x8, " << n_atom_lit->value << '\n';
         m_os << "\tSTR x8, [sp, " << m_stack_ptr << "]" << '\n';
         m_stack_ptr -= 8;
@@ -101,23 +176,17 @@ int CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
 }
 
 
-// void CodeGenerator::emit() {
-//     for (const auto &call : m_called_nodes) {
-//         if (call.get_node_type() == TokenType::KW_EXIT) {
-//             const int exit_code =
-//                 std::get<ExprExit>(call .get_node_value()).exit_code;
-//             m_os << "\tMOV x0, " << exit_code << '\n';
-//             m_os << "\tMOV x16, 1\n";
-//             m_os << "\tBL _exit  \n";
-//         }
-//         else if(call.get_node_type() == TokenType::VAR_INT) {
-//             const auto var_int =
-//             std::get<ExprIntVariable>(call.get_node_value()); m_os << "\tSUB
-//             sp, sp, 16\n"; m_os << "\tMOV x20, " << var_int.value; m_os << "
-//             // ident: " << var_int.ident << '\n'; // dbg comment m_os <<
-//             "\tSTR x20, [sp]\n";
-//
-//             m_stack_sz += 16;
-//         }
-//     }
-// }
+void CodeGenerator::emit() {
+    for (const auto &call : m_program.main) {
+        switch (call.get_node_type()) {
+            case NodeType::STMT_EXIT: {
+                emit_stmt_exit(std::get<NodeStmtExit>(call.m_node));
+                break;
+            }
+            case NodeType::VAR_DECL: {
+                emit_decl(std::get<NodeVarDeclaration>(call.m_node));
+                break;
+            }
+        }
+    }
+}

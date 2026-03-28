@@ -1,4 +1,5 @@
 #include "syntax-tree.hpp"
+#include "code-generator.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "include/utils.hpp"
@@ -27,16 +28,18 @@ int main(int argc, char **argv) {
     Lexer lexer{ path };
     Parser parser { lexer.tokenize() };
     NodeProgram program = parser.create_program();
+    CodeGenerator gen{ std::move(program) };
+    gen.emit();
 
     println("Successful Compilation!");
 
-    const char *assemble_cmd = "as -o ./gen_asm.o ./gen_asm.s";
+    const char *assemble_cmd = "as -o ../build/gen_asm.o ../build/gen_asm.s";
     const char *linker_cmd =
-        "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e "
-        "_start -o ../build/gen_asm ./gen_asm.o";
+        "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path`"
+        " -o ../build/gen_asm ../build/gen_asm.o";
     const char *exec_cmd = "../build/gen_asm; echo $?";
 
-    std::system(assemble_cmd);
-    std::system(linker_cmd);
-    std::system(exec_cmd);
+    // std::system(assemble_cmd);
+    // std::system(linker_cmd);
+    // std::system(exec_cmd);
 }
