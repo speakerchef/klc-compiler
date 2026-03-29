@@ -188,7 +188,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
                 .value = std::stoi(value),
                 .loc = loc
             }));
-            // lhs->var_count++;
+            lhs->var_count++;
             break;
         }
         case TokenType::VAR_IDENT: {
