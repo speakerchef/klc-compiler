@@ -23,11 +23,13 @@ class Parser {
 
     [[nodiscard]]    static std::tuple<float, float> get_binding_power(BinOp bop);
     [[nodiscard]]    static BinOp set_op(const std::string& optype);
-    [[nodiscard]]    bool validate_token(size_t offset, TokenType ttype) const;
+    [[nodiscard]]    bool validate_token(size_t offset, TokenType ttype, BinOp bop) const;
     [[nodiscard]]    std::optional<Token> peek(size_t offset) const;
     [[maybe_unused]] std::optional<Token> next();
-    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype);
+    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype, NodeScope& scope);
     [[nodiscard]]    std::unique_ptr<SyntaxNode> parse_expr();
     [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype);
+    [[nodiscard]]    NodeStmtIf parse_stmt_if();
+    [[nodiscard]]    std::unique_ptr<NodeScope> parse_stmt(bool is_prog);
 };

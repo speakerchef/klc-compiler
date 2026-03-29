@@ -28,6 +28,8 @@ int main(int argc, char **argv) {
     Lexer lexer{ path };
     Parser parser { lexer.tokenize() };
     NodeProgram program = parser.create_program();
+    const std::string id = std::get<NodeVarDeclaration>(program.main.stmts.at(0).m_node).ident.name;
+    // std::println("STMT ID at [0]: {}", id);
     CodeGenerator gen{ std::move(program) };
     gen.emit();
 

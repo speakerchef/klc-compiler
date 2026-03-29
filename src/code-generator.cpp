@@ -1,6 +1,7 @@
 #include "code-generator.hpp"
 #include "include/utils.hpp"
 #include "syntax-tree.hpp"
+#include <cstdint>
 #include <cstdlib>
 #include <print>
 
@@ -11,27 +12,33 @@ CodeGenerator::CodeGenerator(NodeProgram &&prog) noexcept
         exit(EXIT_FAILURE);
     }
     m_os << ".global _main\n.align 4\n_main:\n";
+    for (const auto& node : m_program.main.stmts) {
+        const auto var_dec = std::get_if<NodeVarDeclaration>(&node.m_node);
+        if (var_dec) {
+            const auto expr_node = std::get_if<NodeBinaryExpr>(&var_dec->value->m_node);
+            if (expr_node) {
+                m_var_count += expr_node->var_count;
+            }
+        }
+    }
+    std::println("Total num vars = {}", m_var_count);
 }
-CodeGenerator::~CodeGenerator() {
-    // Epilogue (kinda)
-    m_os << "\tADD sp, sp, " << m_stack_sz << '\n';
-    // m_os << "\tLDP x29, x30, [sp], " << m_stack_sz << '\n';
-}
+CodeGenerator::~CodeGenerator() = default;
 
 const SyntaxNode* CodeGenerator::peek(const size_t offset = 0) const {
-    if (m_program.main.empty() ||
-        ( m_node_ptr + offset ) >= m_program.main.size()) {
+    if (m_program.main.stmts.empty() ||
+        ( m_node_ptr + offset ) >= m_program.main.stmts.size()) {
         return nullptr;
     }
-    return &m_program.main.at(m_node_ptr + offset);
+    return &m_program.main.stmts.at(m_node_ptr + offset);
 }
 
 const SyntaxNode* CodeGenerator::next() {
-    if (m_program.main.empty() ||
-       ( m_node_ptr ) >= m_program.main.size()) {
+    if (m_program.main.stmts.empty() ||
+       ( m_node_ptr ) >= m_program.main.stmts.size()) {
         return nullptr;
     }
-    return &m_program.main.at( m_node_ptr++ );
+    return &m_program.main.stmts.at( m_node_ptr++ );
 }
 
 void CodeGenerator::emit_epilogue() {
@@ -65,7 +72,7 @@ int CodeGenerator::consteval_expr(const NodeBinaryExpr& node) { // use only for 
                 // node.atom = (lres - rres);
                 return (lres - rres);
             }
-            case BinOp::MULT: {
+            case BinOp::MUL: {
                 // node.atom = (lres * rres);
                 return (lres * rres);
             }
@@ -86,7 +93,7 @@ int CodeGenerator::consteval_expr(const NodeBinaryExpr& node) { // use only for 
     switch (node.op) {
         case BinOp::ADD:  return lres + rres;
         case BinOp::SUB:  return lres - rres;
-        case BinOp::MULT: return lres * rres;
+        case BinOp::MUL: return lres * rres;
         case BinOp::DIV:  return lres / rres;
         default: assert(false && "Unknown operator!");
     }
@@ -96,40 +103,52 @@ void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     const auto& [kind, ident, value, loc] = node;
     const auto& bin_expr = std::get<NodeBinaryExpr>(value->m_node); // can only be an expr at this moment
     // std::println("Num vars: {}", bin_expr.var_count);
-    // bin_expr.print();
+    bin_expr.print();
 
-    if ( expand_stack ) {
-        size_t incr = bin_expr.var_count > 2 ? 16 * bin_expr.var_count : 16;
-        m_stack_sz += incr;
-        m_os << std::format("\tSUB sp, sp, {}\n", incr);
-        m_stack_ptr += m_stack_sz;
-        expand_stack = false;
+    if ( m_expand_stack ) {
+        size_t incr = m_var_count * 16;
+        m_stack_sz = incr + 16;
+        m_os << std::format("\tSUB sp, sp, {}\n", m_stack_sz);
+        m_stack_ptr = incr;
+        m_expand_stack = false;
     }
 
     int stack_loc = emit_expr(bin_expr);
-    // std::println("STACK LOC:{} for ID: {}", stack_loc, ident.name);
-    m_cached_var.insert({ ident.name, stack_loc + 8 });
-    // m_cached_var.insert({ id, stack_loc  });
+    m_cached_var.insert({ ident.name, stack_loc });
 }
 
 void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node) {
     //exitcode can ONLY be an INTEGER
-    const auto n_expr = std::get_if<NodeBinaryExpr>(&node.exit_code->m_node);
-    const auto n_int_lit = std::get_if<NodeIntLiteral>(&node.exit_code->m_node);
-    if (n_int_lit) {
+    if (const auto n_int_lit = std::get_if<NodeIntLiteral>(&node.exit_code->m_node)) {
         m_os << std::format("\tMOV x0, #{}\n", n_int_lit->value);
         m_os << "\tMOV x16, #1\n";
         emit_epilogue();
         m_os << "\tBL  _exit\n";
     }
-    if (n_expr) {
-        const int64_t stack_pos = emit_expr(*n_expr) + 8;
+    if ( const auto n_expr = std::get_if<NodeBinaryExpr>(&node.exit_code->m_node)) {
+        const int64_t stack_pos = emit_expr(*n_expr);
         m_os << std::format("\tLDR x0, [sp, {}]\n", stack_pos);
-        m_os << "\tMOV x16, #1\n";
+        m_os << "\tMOV x16, 1\n";
         emit_epilogue();
         m_os << "\tBL  _exit\n";
     }
 }
+
+// std::string CodeGenerator::emit_scope(const NodeScope& node) {
+//     const std::string label = "label1:\n";
+//     m_os << label;
+//     for (const auto& call : node.stmts) {
+//
+//     }
+// }
+
+// void CodeGenerator::emit_stmt_if(const NodeStmtIf& node) {
+//     int stack_loc = emit_expr(std::get<NodeBinaryExpr>(node.cond->m_node));
+//     emit_
+//     m_os << std::format("\tLDR x8, [sp, {}]\n", stack_loc);
+//     m_os << "\tCMP x8, 0\n";
+//     m_os << std::format("B.NE {}", label);
+// }
 
 int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     // node.print();
@@ -137,54 +156,60 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     const auto n_atom_lit = std::get_if<NodeIntLiteral>(&node.atom);
 
     if (n_atom_id) {
-        int cached_loc = m_cached_var.at(n_atom_id->name) - 8;
+        int cached_loc = m_cached_var.at(n_atom_id->name);
         return cached_loc;
     }
     if (n_atom_lit) {
         m_os << "\tMOV x8, " << n_atom_lit->value << '\n';
         m_os << "\tSTR x8, [sp, " << m_stack_ptr << "]" << '\n';
+
+        const int32_t storage_loc = m_stack_ptr;
         m_stack_ptr -= 8;
-        if (!node.lhs && !node.rhs) return m_stack_ptr;
+        if (!node.lhs && !node.rhs) return storage_loc;
     }
 
 
-    // TODO: Rigorously test logic and robustness of curr solution
     int lhs_stk_adr = -1, rhs_stk_adr = -1;
-    if (node.lhs) lhs_stk_adr = emit_expr(*node.lhs) + 8; //adr of a = 16
-    if (node.rhs) rhs_stk_adr = emit_expr(*node.rhs) + 8; //adr of 3 = 8
+    if (node.lhs) lhs_stk_adr = emit_expr(*node.lhs);
+    if (node.rhs) rhs_stk_adr = emit_expr(*node.rhs);
 
     if (lhs_stk_adr == -1 || rhs_stk_adr == -1) {
         std::println("Bad stack address!");
         exit(EXIT_FAILURE);
     }
 
+    //==========================================================================
+    // m_stack_ptr += 8;
+    m_os << std::format("\tLDR x8, [sp, {}]\n", lhs_stk_adr);
+    m_os << std::format("\tLDR x9, [sp, {}]\n", rhs_stk_adr);
     switch (node.op) {
-        case BinOp::ADD: {
-            m_stack_ptr += 8;
-            m_os << std::format("\tLDR x8, [sp, {}]\n", lhs_stk_adr);
-            m_os << std::format("\tLDR x9, [sp, {}]\n", rhs_stk_adr);
-            m_os << "\tADD x8, x8, x9\n";
-            m_os << std::format("\tSTR x8, [sp, {}]\n", m_stack_ptr);
-            m_stack_ptr -= 8;
-            return m_stack_ptr;
-        }
-        case BinOp::SUB:
-        case BinOp::MULT:
-        case BinOp::DIV:
+        case BinOp::ADD: { m_os << "\tADD x8, x8, x9\n";  break; }
+        case BinOp::SUB: { m_os << "\tSUB x8, x8, x9\n";  break; }
+        case BinOp::MUL:{ m_os << "\tMUL x8, x8, x9\n";  break; }
+        case BinOp::DIV: { m_os << "\tSDIV x8, x8, x9\n"; break; }
         default: assert(false && "Unknown operator!");
     }
+    m_os << std::format("\tSTR x8, [sp, {}]\n", m_stack_ptr);
+    const int32_t storage_loc = m_stack_ptr;
+    m_stack_ptr -= 8;
+    return storage_loc;
+    //==========================================================================
 }
 
-
 void CodeGenerator::emit() {
-    for (const auto &call : m_program.main) {
+    #pragma clang diagnostic ignored "-Wswitch"
+    for (const auto &call : m_program.main.stmts) {
         switch (call.get_node_type()) {
+            case NodeType::VAR_DECL: {
+                emit_decl(std::get<NodeVarDeclaration>(call.m_node));
+                break;
+            }
             case NodeType::STMT_EXIT: {
                 emit_stmt_exit(std::get<NodeStmtExit>(call.m_node));
                 break;
             }
-            case NodeType::VAR_DECL: {
-                emit_decl(std::get<NodeVarDeclaration>(call.m_node));
+            case NodeType::STMT_IF: {
+                // emit_stmt_if(std::get<NodeStmtIf>(call.m_node));
                 break;
             }
         }

@@ -1,39 +1,78 @@
-# **KLC: KNOB-Lang-Compiler**
+# KLC: KNOB-Lang-Compiler
 
-### *What is KNOB?* : **KNOB** is **K**ompiled **NOB**: k**N**ob-**O**riented-**B**inary
-- This is a simple compiler project of mine to compile the KNOB (.knv) language into asm - a language I'm in the process of creating.
-*Why **.knv**?*: Yes, *.knb* would've made more sense BUT... everyone knows that the true perfect language will always prioritize ergonomics over reliability and standards that make sense. With that in mind, you *should* know it's easier to hit 'v' from the home-row than 'b' - thank me later.
+A from scratch compiler for **KNOB** (**K**ompiled **NOB**) — a statically typed, semicolon delimited language that I'm creating that compiles down to AArch64 assembly.
 
-### General language quirks and features:
-- Delimited language - ";"
-- Static types (for now) (maybe dynamic later) 
-- Common, well known practices possible (ideally)
-- Kewords and Syntax stuffs:
-	- Primitives: **int str char float double bool**
-		- #### Keword-Specific Implementation:
-			- int: tbd,
-			- str: tbd,
-			- char: tbd
-			- float: tbd
-			- double: tbd
-			- bool: tbd
-	- *return*: returns  
-	- *func*: function
-- More to be added here... KLC: KNOB-Lang-Compiler
+> *Why `.knv` and not `.knb`?*
+> Everyone knows the true perfect language prioritizes ergonomics over sensible standards. `v` is easier to hit from the home row than `b`. You're welcome.
 
+---
 
-- **If you would like to run the compiler in its current state:**
-```bash
-#Build
-cmake -S . -B build/
-cd ./build
-cmake --build .
+## Architecture
 
-#Run
-./klc <FILE.knv>
+```
+source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY → clang/ld → executable
 ```
 
-- **If you would like to build the a.s asm file:**
+- **Lexer/Tokenizer** — tokenizes `.knv` source into a stream of typed tokens
+- **Parser** — Pratt parser with precedence climbing for expressions, producing an AST.
+- **Codegen** — Currently direct AST emission to assembly targeting AArch64 (Apple Silicon / macOS Darwin ABI). (x86_64 support in the future).
+
+No LLVM IR or other backends/deps.
+
+---
+
+## Language features
+
+*KNOB is a fun project of mine and is still a work in progress.
+
+### Keywords (so far)
+
+| Keyword | What it does |
+|---------|-------------|
+| `let`   | Const-defaulted variable declaration |
+| `mut`   | Mutable variable declaration |
+| `exit`  | Exit with an exit code |
+| `if`    | Conditional branching (WIP) |
+
+### Supported Operations (so far)
+
+- Integer arithmetic: `+`, `-`, `*`, `/` (with correct precedence)
+- Parenthesization: `(1 + 2) * (3 + 4)`
+- Variable declarations with expression assignment
+
+### Example syntax for `.knv`. Try to run this!
+
+```
+let x = 5 * 6 / 2 - 5; // 10
+let y = (1 + 2) * (3 + 4); // 21
+exit y - x; //you should see 11
+```
+
+---
+
+## Build & Run
+
+> **Requires:** CMake, Clang/GCC with C++23 support, AArch64 target (Apple Silicon Mac)
+
 ```bash
-clang -c -g -o a.o a.s && ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path` -e _start -o out a.o && ./out
-$$```
+# Build the compiler
+cmake -S . -B build/
+cmake --build ./build
+
+# Compile a .knv file to assembly
+./build/klc <FILE.knv>
+```
+
+### Assemble & Link the output
+
+```bash
+cd build/
+clang -c -g -o a.o gen_asm.s \
+  && ld -lSystem -syslibroot $(xcrun -sdk macosx --show-sdk-path) -e _main -o out a.o \
+  && ./out
+
+# Check exit code
+echo $?
+```
+
+---

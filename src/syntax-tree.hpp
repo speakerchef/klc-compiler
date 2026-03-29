@@ -19,12 +19,20 @@ struct NodeStmtExit;
 enum class BinOp {
     ADD,
     SUB,
-    MULT,
+    MUL,
     DIV,
+    EQ,
+    LT,
+    GT,
+    LTE,
+    GTE,
+    EQUIV,
+    NIL_,
 };
 
 enum class NodeType {
     SYNTAX_NODE,
+    SCOPE_NODE,
     EXPR_NODE,
     EXPR_BIN,
     EXPR_UNARY,
@@ -32,6 +40,7 @@ enum class NodeType {
     VAR_DECL,
     LIT_INT,
     STMT_EXIT,
+    STMT_IF,
 };
 
 enum class VarType {
@@ -39,18 +48,6 @@ enum class VarType {
     LET, // default
 };
 
-struct NodeProgram {
-    std::vector<SyntaxNode> main;
-    std::unordered_map<std::string, SyntaxNode*> var_table;
-
-    [[nodiscard]] const SyntaxNode* lookup_node(const std::string &ident) const {
-        if (ident.empty()) {
-            std::println(stderr, "Error: Identifier required.");
-            exit(EXIT_FAILURE);
-        }
-        return var_table.at(ident);
-    }
-};
 
 struct NodeIdentifier {
     std::string name; // used for variable lookup
@@ -94,11 +91,35 @@ struct NodeStmtExit {
     LocData loc;
 };
 
+struct NodeScope {
+    std::vector<SyntaxNode> stmts;
+    std::unordered_map<std::string, SyntaxNode*> var_table;
+    LocData loc;
+};
+
+struct NodeProgram {
+    std::unordered_map<std::string, SyntaxNode*> var_table;
+    NodeScope main;
+
+    [[nodiscard]] const SyntaxNode* lookup_node(const std::string &ident) const {
+        if (ident.empty()) {
+            std::println(stderr, "Error: Identifier required.");
+            exit(EXIT_FAILURE);
+        }
+        return var_table.at(ident);
+    }
+};
+
+struct NodeStmtIf {
+    std::unique_ptr<SyntaxNode> cond;
+    std::unique_ptr<NodeScope> scope;
+};
+
 struct SyntaxNode {
   public:
-    std::variant<NodeBinaryExpr, NodeUnaryExpr,
+    std::variant<NodeScope, NodeBinaryExpr, NodeUnaryExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit> m_node;
+                 NodeStmtExit, NodeStmtIf> m_node;
     
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;

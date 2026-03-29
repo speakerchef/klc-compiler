@@ -19,6 +19,7 @@ enum class TokenType {
     KW_RETURN,
     KW_LET,
     KW_MUT,
+    KW_IF,
     KW_INT,
     BIN_OP,
     OP_EQUALS,
@@ -28,8 +29,11 @@ enum class TokenType {
     OP_DIV,
     DELIM_LPAREN,
     DELIM_RPAREN,
+    DELIM_LCURLY,
+    DELIM_RCURLY,
     LIT_INT,
     VAR_IDENT,
+    NIL_,
 };
 
 struct LocData{

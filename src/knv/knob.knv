@@ -1,3 +1,3 @@
-let x = 34;
-let bun = x + 35;
-exit bun;
+let x = 5 * 6 / 2 - 5;
+let y = (1 + 2) * (3 + 4);
+exit y - x;

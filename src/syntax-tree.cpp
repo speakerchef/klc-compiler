@@ -7,12 +7,14 @@
 //====================================//
 NodeType SyntaxNode::get_node_type() const {
     auto node_typer = Overload {
+        [](const NodeScope&)                           { return NodeType::SCOPE_NODE; },
         [](const NodeBinaryExpr&)                      { return NodeType::EXPR_BIN; },
         [](const NodeUnaryExpr&)                       { return NodeType::EXPR_UNARY; },
         [](const NodeIdentifier&)                      { return NodeType::VAR_IDENT; },
         [](const NodeVarDeclaration&)                  { return NodeType::VAR_DECL; },
         [](const NodeIntLiteral&)                      { return NodeType::LIT_INT; },
         [](const NodeStmtExit&)                        { return NodeType::STMT_EXIT; },
+        [](const NodeStmtIf&)                          { return NodeType::STMT_IF; },
     };
     return std::visit(node_typer, m_node);
 }
@@ -21,7 +23,7 @@ std::string NodeBinaryExpr::op_to_string(const BinOp bop) {
     switch (bop) {
         case BinOp::ADD: return "+";
         case BinOp::SUB: return "-";
-        case BinOp::MULT: return "*";
+        case BinOp::MUL: return "*";
         case BinOp::DIV: return "/";
     }
 }
