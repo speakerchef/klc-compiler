@@ -36,4 +36,5 @@ class CodeGenerator {
     [[nodiscard]] const SyntaxNode* peek(size_t offset) const;
     [[maybe_unused]] const SyntaxNode* next();
     [[nodiscard]] std::string gen_var_declaration();
+    friend class CodeGenTests;
 };

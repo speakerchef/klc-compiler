@@ -15,7 +15,6 @@ add_executable(klc
 )
 
 add_library(klc_lib
-    ./src/klc-compiler.cpp
     ./src/lexer.cpp
     ./src/parser.cpp
     ./src/syntax-tree.cpp
@@ -26,11 +25,22 @@ target_include_directories(klc_lib PUBLIC src)
 
 target_link_libraries(klc PRIVATE klc_lib)
 
-add_executable(test
-    ./tests/CodeGeneratorTests.cpp
+# Google Test
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
 )
-target_link_libraries(test PRIVATE klc_lib)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(klc-tests ./tests/klc-tests.cpp)
+target_link_libraries(klc-tests PRIVATE klc_lib GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(klc-tests)
 
 target_compile_options(klc PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
-target_compile_options(test PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
-
+target_compile_options(klc-tests PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)

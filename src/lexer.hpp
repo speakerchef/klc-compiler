@@ -63,4 +63,5 @@ class Lexer {
 
     /*==========================================================*/
     [[nodiscard]] static Token classify_token(const std::string &buf) noexcept;
+    friend class LexerTests;
 };

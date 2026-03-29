@@ -32,4 +32,5 @@ class Parser {
     [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype);
     [[nodiscard]]    NodeStmtIf parse_stmt_if();
     [[nodiscard]]    std::unique_ptr<NodeScope> parse_stmt(bool is_prog);
+    friend class ParserTests;
 };
