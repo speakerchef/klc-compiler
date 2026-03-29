@@ -6,3 +6,4 @@ sandbox/*
 !sandbox/*.asm
 .DS_Store
 .idea/
+cmake-build-debug/

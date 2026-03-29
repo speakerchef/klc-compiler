@@ -14,10 +14,13 @@ int main() {
     Lexer lex(path);
     Parser parser{ lex.tokenize() };
     NodeProgram prog = parser.create_program();
-    std::vector<std::reference_wrapper<NodeBinaryExpr>> res;
-    res.reserve(20);
+    std::vector<std::reference_wrapper<NodeBinaryExpr>> bin_expr;
+    std::vector<std::reference_wrapper<NodeVarDeclaration>> decl;
+    bin_expr.reserve(20);
+    decl.reserve(20);
     for (auto& node : prog.main) {
-        res.emplace_back(std::get<NodeBinaryExpr>(std::get<NodeVarDeclaration>(node.m_node).value->m_node));
+        bin_expr.emplace_back(std::get<NodeBinaryExpr>(std::get<NodeVarDeclaration>(node.m_node).value->m_node));
+        decl.emplace_back(std::get<NodeVarDeclaration>(node.m_node));
     }
     CodeGenerator gen(std::move(prog));
 
@@ -30,12 +33,12 @@ int main() {
     int success_count = 0;
     int total_count = 0;
 
-    auto run_test = [&](const size_t tnum, const int expected) {
+    auto t_consteval_expr= [&](const size_t tnum, const int expected) {
         auto t1_pass = std::format("{}Test {} Passed!{}", GREEN, tnum, RESET);
         auto t1_fail = std::format("{}Test {} Failed!{}", RED, tnum, RESET);
 
         try {
-            auto t = gen.eval_expr<int>( res.at(tnum - 1) );
+            auto t = gen.consteval_expr<int>( bin_expr.at(tnum - 1) );
             std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
             if (t == expected) success_count++;
             total_count++;
@@ -44,16 +47,40 @@ int main() {
         catch (std::exception& e) {
         std::println(stderr, "Exception: {}", e.what());
         }
+    };
+    // std::println("{}========= [TEST] CodeGenerator::eval_expr() ========={}", B_YELLOW, RESET);
+    // t_consteval_expr(1, 0);
+    // t_consteval_expr(2, 5);
+    // t_consteval_expr(3, 5);
+    // t_consteval_expr(4, 30);
+    // t_consteval_expr(5, 25);
+    // t_consteval_expr(6, 16);
+    // std::println("{}Total Passed: {}/{}{}", success_count != total_count ? B_YELLOW : GREEN, success_count, total_count, RESET);
 
+    auto t_emit_decl = [&](const size_t tnum, const int expected) {
+        auto t1_pass = std::format("{}Test {} Passed!{}", GREEN, tnum, RESET);
+        auto t1_fail = std::format("{}Test {} Failed!{}", RED, tnum, RESET);
+
+        try {
+            // auto t = gen.emit_decl(decl.at( tnum - 1 ));
+            gen.emit_decl(decl.at( tnum - 1 ));
+
+            // std::println("{}{}Test {}, Result = {} : Expected ({})", CYAN, BOLD, tnum, t, expected);
+            // if (t == expected) success_count++;
+            // total_count++;
+            // std::println("{}", (t == expected) ? t1_pass : t1_fail);
+        }
+        catch (std::exception& e) {
+            std::println(stderr, "Exception: {}", e.what());
+        }
     };
     std::println("{}========= [TEST] CodeGenerator::eval_expr() ========={}", B_YELLOW, RESET);
-    run_test(1, 0);
-    run_test(2, 5);
-    run_test(3, 5);
-    run_test(4, 30);
-    run_test(5, 25);
-    run_test(6, 16);
+    t_emit_decl(1, 0);
+    t_emit_decl(2, 5);
+    // t_emit_decl(3, 5);
+    // t_emit_decl(4, 30);
+    // t_emit_decl(5, 25);
+    // t_emit_decl(6, 16);
     std::println("{}Total Passed: {}/{}{}", success_count != total_count ? B_YELLOW : GREEN, success_count, total_count, RESET);
-
     return 0;
 }

@@ -1,24 +1,14 @@
 #pragma once
 
 #include "lexer.hpp"
-#include "syntax-tree.hpp"
-#include <concepts>
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
 #include <print>
-#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
-
-/*
- * Syntax Examples:
- * case 1: let x = 2;
- * case 2: let y = 5 + 5; :10
- * case 3: let z = 5 + (x * 4); :13
- *
- */
 
 struct SyntaxNode;
 struct NodeExpr;
@@ -50,7 +40,7 @@ struct NodeProgram {
     std::vector<SyntaxNode> main;
     std::unordered_map<std::string, SyntaxNode*> var_table;
 
-    [[nodiscard]] SyntaxNode* lookup_node(const std::string &ident) const {
+    [[nodiscard]] const SyntaxNode* lookup_node(const std::string &ident) const {
         if (ident.empty()) {
             std::println(stderr, "Error: Identifier required.");
             exit(EXIT_FAILURE);
@@ -64,19 +54,12 @@ struct NodeBinaryExpr { // eg. a + b or 4 * 5
     BinOp op;
     std::unique_ptr<NodeBinaryExpr> lhs;
     std::unique_ptr<NodeBinaryExpr> rhs;
-    // NodeBinaryExpr* lhs;
-    // NodeBinaryExpr* rhs;
+    size_t var_count;
     LocData loc;
-
-    // NodeBinaryExpr(const NodeBinaryExpr& node) = default;
-    // NodeBinaryExpr(NodeBinaryExpr&& node) = default;
-    // NodeBinaryExpr operator=(NodeBinaryExpr&& node) { return std::move(node); };
-    // ~NodeBinaryExpr() { free(lhs); free(rhs); }
-
     void print() const;
 
 private:
-    std::string op_to_string(BinOp bop) const;
+    [[nodiscard]] static std::string op_to_string(BinOp bop);
 };
 
 struct NodeUnaryExpr {
@@ -108,25 +91,12 @@ struct NodeStmtExit {
     LocData loc;
 };
 
-struct NodeExpr {
-    std::unique_ptr<SyntaxNode> expr; // Literal or expression
-    LocData loc;
-};
-
 struct SyntaxNode {
   public:
-    std::variant<std::unique_ptr<NodeExpr>, NodeBinaryExpr, NodeUnaryExpr,
+    std::variant<NodeBinaryExpr, NodeUnaryExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit>
-        m_node;
-    LocData loc;
-
-    // SyntaxNode(const auto& node) : m_node(node) {}
-    // SyntaxNode operator=(const auto& node) { return node; }
-    // SyntaxNode(auto&& node) : m_node(std::move(node)) {}
-    // SyntaxNode operator=(auto&& node) { return std::move(node); }
-    // ~SyntaxNode() = default;
-
+                 NodeStmtExit> m_node;
+    
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;
     [[nodiscard]] const SyntaxNode* get_node() const;

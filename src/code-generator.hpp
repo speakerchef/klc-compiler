@@ -1,5 +1,3 @@
-#pragma once
-
 #include "syntax-tree.hpp"
 #include <cstddef>
 #include <fstream>
@@ -19,7 +17,7 @@ class CodeGenerator {
     void emit();
 
 template<typename T>
-[[nodiscard]] inline T eval_expr(NodeBinaryExpr& node) {
+[[nodiscard]] inline T consteval_expr(NodeBinaryExpr& node) { // use only for compile time eval
     std::string ident;
     auto lres = 0;
     auto rres = 0;
@@ -33,8 +31,8 @@ template<typename T>
         const auto rhs = id_node.rhs.get();
 
         // id_node.print();
-        if (lhs) lres = eval_expr<int>(*lhs);
-        if (rhs) rres = eval_expr<int>(*rhs);
+        if (lhs) lres = consteval_expr<int>(*lhs);
+        if (rhs) rres = consteval_expr<int>(*rhs);
 
         switch (id_node.op) {
             case BinOp::ADD: {
@@ -54,36 +52,35 @@ template<typename T>
                 break;
             }
             default: {
-                std::println(stderr, "Goofy, this operator is not supported");
-                exit(EXIT_FAILURE);
+                assert(false && "Unknown operator!");
             }
         }
         
     }
-    if (!node.lhs && !node.rhs) {
-        m_cached_var[ident] = node.atom; 
-        return std::stoi(node.atom);
-    }
+    if (!node.lhs && !node.rhs) { return std::stoi(node.atom); }
 
-    if (node.lhs) lres = eval_expr<int>(*node.lhs);
-    if (node.rhs) rres = eval_expr<int>(*node.rhs);
+    if (node.lhs) lres = consteval_expr<int>(*node.lhs);
+    if (node.rhs) rres = consteval_expr<int>(*node.rhs);
     
     switch (node.op) {
         case BinOp::ADD:  return lres + rres;
         case BinOp::SUB:  return lres - rres;
         case BinOp::MULT: return lres * rres;
         case BinOp::DIV:  return lres / rres;
-    default: assert(false && "Unknown operator!");
-
+        default: assert(false && "Unknown operator!");
     }
 }
+    [[nodiscard]] int emit_expr(const NodeBinaryExpr&node);
+    void emit_decl(const NodeVarDeclaration& node);
 
   private:
     std::ofstream m_os;
     size_t m_node_ptr = 0;
     size_t m_stack_sz = 0;
+    int32_t m_stack_ptr = 0;
+    bool expand_stack = true;
     NodeProgram m_program;
-    std::unordered_map<std::string, std::string> m_cached_var;
+    std::unordered_map<std::string, int32_t> m_cached_var;
 
     //===================================
 
