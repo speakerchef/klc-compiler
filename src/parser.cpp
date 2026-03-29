@@ -188,7 +188,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
                 .value = std::stoi(value),
                 .loc = loc
             }));
-            lhs->var_count++;
+            // lhs->var_count++;
             break;
         }
         case TokenType::VAR_IDENT: {
@@ -328,7 +328,8 @@ NodeScope Parser::parse_stmt(const bool is_prog,
             break;
         }
         case TokenType::KW_IF: {
-            //
+            //NOTE: always pass the scope var_table separately in all 
+            //cases where scopes are involved
             auto if_res = std::move(parse_stmt_if(scope.var_table));
             scope.var_table.insert(if_res.scope.var_table.begin(), if_res.scope.var_table.end());
             scope.stmts.emplace_back(std::move(if_res));
@@ -338,8 +339,6 @@ NodeScope Parser::parse_stmt(const bool is_prog,
     }
     return scope;
 }
-
-// TODO: Fix scope issue; outerscope not vis in inner scope
 
 NodeProgram&& Parser::create_program() {
     m_program.main = parse_stmt(true, m_program.main.var_table) ;

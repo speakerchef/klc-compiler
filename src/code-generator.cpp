@@ -1,7 +1,6 @@
 #include "code-generator.hpp"
 #include "include/utils.hpp"
 #include "syntax-tree.hpp"
-#include <cstdint>
 #include <cstdlib>
 #include <print>
 #include <mach/memory_object_types.h>
@@ -13,18 +12,50 @@ CodeGenerator::CodeGenerator(NodeProgram &&prog) noexcept
         exit(EXIT_FAILURE);
     }
     m_os << ".global _main\n.align 4\n_main:\n";
-    for (const auto&[m_node] : m_program.main.stmts) {
-        if (const auto var_dec = std::get_if<NodeVarDeclaration>(&m_node)) {
-            if (const auto expr_node = std::get_if<NodeBinaryExpr>(&var_dec->value->m_node)) {
-                m_var_count += expr_node->var_count;
-            }
-        }
-    }
+    get_count_vars(m_program.main);
     std::println("Total num vars = {}", m_var_count);
 
     emit(m_program.main);
 }
 CodeGenerator::~CodeGenerator() = default;
+
+void CodeGenerator::get_count_vars(const NodeScope& node) {
+    for (const auto& stmt : node.stmts){
+        switch (stmt.get_node_type()) {
+        case NodeType::VAR_DECL: {
+            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeVarDeclaration>(stmt.m_node).value->m_node )) {
+                m_var_count += expr->var_count;
+            }
+            break;
+        }
+        case NodeType::STMT_EXIT: {
+            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeStmtExit>(stmt.m_node).exit_code->m_node )) {
+                m_var_count += expr->var_count;
+            }
+            else if ( std::get_if<NodeIdentifier>( &std::get<NodeStmtExit>(stmt.m_node).exit_code->m_node )) {
+                m_var_count++;
+            }
+            break;
+        }
+        case NodeType::STMT_IF: {
+            const auto& scp = ((std::get<NodeStmtIf>(stmt.m_node)).scope);
+            get_count_vars(scp);
+            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeStmtIf>(stmt.m_node).cond->m_node )) {
+                m_var_count += expr->var_count;
+            }
+            else if ( std::get_if<NodeIdentifier>( &std::get<NodeStmtIf>(stmt.m_node).cond->m_node )) {
+                m_var_count++;
+            }
+            break;
+        }
+        case NodeType::SCOPE_NODE: {
+            get_count_vars(std::get<NodeScope>(stmt.m_node));
+            break;
+        }
+        default: assert(false && "Unknown node type!");
+        }
+    }
+}
 
 const SyntaxNode* CodeGenerator::peek(const size_t offset = 0) const {
     if (m_program.main.stmts.empty() ||
@@ -45,60 +76,6 @@ const SyntaxNode* CodeGenerator::next() {
 void CodeGenerator::emit_epilogue() {
     m_os << std::format("\tADD sp, sp, {}\n", m_stack_sz);
 }
-
-// int CodeGenerator::consteval_expr(const NodeBinaryExpr& node) { // use only for compile time eval
-//     auto lres = 0;
-//     auto rres = 0;
-//     const auto n_atom_id { std::get_if<NodeIdentifier>(&node.atom) };
-//     const auto n_atom_lit { std::get_if<NodeIntLiteral>(&node.atom) };
-//     // node.print();
-//
-//     // if (!std::isdigit(node.atom.front()) && !node.atom.empty()) {
-//     if (n_atom_id) {
-//         // std::println("IDENT AT EVAL EXPR: {}", node.atom);
-//         const auto & id_node = std::get<NodeBinaryExpr>(m_program.lookup_node(n_atom_id->name)->m_node);
-//         const auto lhs = id_node.lhs.get();
-//         const auto rhs = id_node.rhs.get();
-//
-//         // id_node.print();
-//         if (lhs) lres = consteval_expr(*lhs);
-//         if (rhs) rres = consteval_expr(*rhs);
-//
-//         switch (id_node.op) {
-//             case BinOp::ADD: {
-//                 // node.atom = std::to_string(lres + rres);
-//                 return (lres + rres);
-//             }
-//             case BinOp::SUB: {
-//                 // node.atom = (lres - rres);
-//                 return (lres - rres);
-//             }
-//             case BinOp::MUL: {
-//                 // node.atom = (lres * rres);
-//                 return (lres * rres);
-//             }
-//             case BinOp::DIV: {
-//                 // node.atom = (lres / rres);
-//                 return (lres / rres);
-//             }
-//             default: {
-//                 assert(false && "Unknown operator!");
-//             }
-//         }
-//     }
-//     if (!node.lhs && !node.rhs) return n_atom_lit->value;
-//
-//     if (node.lhs) lres = consteval_expr(*node.lhs);
-//     if (node.rhs) rres = consteval_expr(*node.rhs);
-//
-//     switch (node.op) {
-//         case BinOp::ADD:  return lres + rres;
-//         case BinOp::SUB:  return lres - rres;
-//         case BinOp::MUL: return lres * rres;
-//         case BinOp::DIV:  return lres / rres;
-//         default: assert(false && "Unknown operator!");
-//     }
-// }
 
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     const auto& [kind, ident, value, loc] = node;

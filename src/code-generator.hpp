@@ -14,13 +14,6 @@ class CodeGenerator {
 
     void emit(const NodeScope& node);
 
-    [[nodiscard]] int consteval_expr(const NodeBinaryExpr& node); // only for compile time eval
-    [[nodiscard]] int32_t emit_expr(const NodeBinaryExpr& node);
-                  void emit_stmt_exit(const NodeStmtExit& node);
-                  void emit_stmt_if(const NodeStmtIf& node);
-                  std::string emit_scope(const NodeScope& scope);
-                  void emit_epilogue();
-                  void emit_decl(const NodeVarDeclaration& node);
 
   private:
     std::ofstream m_os {};
@@ -35,8 +28,13 @@ class CodeGenerator {
 
     //===================================
 
-    [[nodiscard]] const SyntaxNode* peek(size_t offset) const;
+    [[nodiscard]]    const SyntaxNode* peek(size_t offset) const;
     [[maybe_unused]] const SyntaxNode* next();
-    [[nodiscard]] std::string gen_var_declaration();
+    [[nodiscard]]    int32_t emit_expr(const NodeBinaryExpr& node);
+                     void get_count_vars(const NodeScope& node);
+                     void emit_stmt_exit(const NodeStmtExit& node);
+                     void emit_stmt_if(const NodeStmtIf& node);
+                     void emit_decl(const NodeVarDeclaration& node);
+                     void emit_epilogue();
     friend class CodeGenTests;
 };

@@ -7,9 +7,7 @@ let f = a > c;
 let g = c == 5;
 if (f && g) {
     let h = (a + b + c) / 4;
-    let i = h > 10;
-    let j = e != 0;
-    if (i && j) {
+    if ((h > 10) && (e != 0)) {
         let k = a - c;
         let l = k ** 2;
         if (l > 100) {
