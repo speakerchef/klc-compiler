@@ -9,7 +9,7 @@
 
 static std::string write_temp_file(const std::string &content) {
   static int counter = 0;
-  auto path = std::filesystem::temp_directory_path() /
+  const auto path = std::filesystem::temp_directory_path() /
               std::format("klc_test_{}.knv", counter++);
   std::ofstream ofs(path);
   ofs << content;
@@ -18,7 +18,7 @@ static std::string write_temp_file(const std::string &content) {
 }
 
 static std::vector<Token> tokenize_string(const std::string &source) {
-  auto path = write_temp_file(source);
+  const auto path = write_temp_file(source);
   Lexer lex(path);
   auto tokens = lex.tokenize();
   std::filesystem::remove(path);
@@ -35,10 +35,9 @@ static int run_program(const std::string &source) {
   auto src_path = write_temp_file(source);
 
   Lexer lex(src_path);
-  Parser parser(lex.tokenize());
   {
+    Parser parser(lex.tokenize());
     CodeGenerator gen(std::move(parser.create_program()));
-    gen.emit();
   }
 
   int asm_result = std::system(

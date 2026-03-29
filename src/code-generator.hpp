@@ -12,21 +12,23 @@ class CodeGenerator {
      explicit CodeGenerator(NodeProgram&& prog) noexcept;
     ~CodeGenerator();
 
-    void emit();
+    void emit(const NodeScope& node);
 
     [[nodiscard]] int consteval_expr(const NodeBinaryExpr& node); // only for compile time eval
     [[nodiscard]] int32_t emit_expr(const NodeBinaryExpr& node);
                   void emit_stmt_exit(const NodeStmtExit& node);
-                  // void emit_stmt_if(const NodeStmtIf& node);
+                  void emit_stmt_if(const NodeStmtIf& node);
+                  std::string emit_scope(const NodeScope& scope);
                   void emit_epilogue();
                   void emit_decl(const NodeVarDeclaration& node);
 
   private:
-    std::ofstream m_os;
+    std::ofstream m_os {};
     size_t m_node_ptr = 0;
     size_t m_stack_sz = 0;
     int32_t m_stack_ptr = 0;
     size_t m_var_count = 0;
+    size_t m_lbl_count = 0;
     bool m_expand_stack = true;
     NodeProgram m_program{};
     std::unordered_map<std::string, int32_t> m_cached_var;

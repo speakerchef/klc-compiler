@@ -3,7 +3,6 @@
 #include "syntax-tree.hpp"
 
 #include <algorithm>
-#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -13,7 +12,7 @@
 #include <vector>
 
 Parser::Parser(std::vector<Token> &&toks) noexcept
-    : m_tokens(std::move(toks)) {};
+    : m_tokens(std::move(toks)), m_program({}) {};
 
 std::optional<Token> Parser::next() {
     if (m_tokens.empty() || m_tok_ptr >= m_tokens.size()) {
@@ -42,10 +41,34 @@ bool Parser::validate_token(const size_t offset, const TokenType ttype = TokenTy
 
 std::tuple<float, float> Parser::get_binding_power(const BinOp bop) {
     switch (bop) {
-    case BinOp::SUB:  [[fallthrough]];
-    case BinOp::ADD:  { return {1, 1.1}; }
-    case BinOp::DIV:  [[fallthrough]];
-    case BinOp::MUL:  { return {2, 2.1}; }
+    // Assignment (right associative)
+    case BinOp::EQ:      { return {1, 0.9}; }
+
+    //logical
+    case BinOp::LG_OR:   { return {2, 2.1}; }
+    case BinOp::LG_AND:  { return {3, 3.1}; }
+
+    //Bitwise
+    case BinOp::BW_OR:   { return {4, 4.1}; }
+    case BinOp::BW_XOR:     { return {5, 5.1}; }
+    case BinOp::BW_AND:  { return {6, 6.1}; }
+
+    case BinOp::EQUIV:   [[fallthrough]];
+    case BinOp::NEQUIV:  { return {7, 7.1}; }
+
+    case BinOp::LT:      [[fallthrough]];
+    case BinOp::GT:      [[fallthrough]];
+    case BinOp::LTE:     [[fallthrough]];
+    case BinOp::GTE:     { return {8, 8.1}; }
+
+    case BinOp::SUB:     [[fallthrough]];
+    case BinOp::ADD:     { return {9, 9.1}; }
+    case BinOp::DIV:     [[fallthrough]];
+    case BinOp::MUL:     { return {10, 10.1}; }
+    // Power (right associative)
+    case BinOp::PWR:     { return {11, 10.9}; }
+
+    default: assert(false && "Error: Unknown BinOp; Cannot get binding power.");
     }
 }
 
@@ -53,6 +76,7 @@ BinOp Parser::set_op(const std::string &optype) {
     if (optype == "+")  { return BinOp::ADD; }
     if (optype == "-")  { return BinOp::SUB; }
     if (optype == "*")  { return BinOp::MUL; }
+    if (optype == "**") { return BinOp::PWR; }
     if (optype == "/")  { return BinOp::DIV; }
     if (optype == "=")  { return BinOp::EQ; }
     if (optype == "<")  { return BinOp::LT; }
@@ -60,10 +84,18 @@ BinOp Parser::set_op(const std::string &optype) {
     if (optype == "<=") { return BinOp::LTE; }
     if (optype == ">=") { return BinOp::GTE; }
     if (optype == "==") { return BinOp::EQUIV; }
+    if (optype == "!=") { return BinOp::NEQUIV; }
+    if (optype == "|")  { return BinOp::BW_OR; }
+    if (optype == "||") { return BinOp::LG_OR; }
+    if (optype == "&")  { return BinOp::BW_AND; }
+    if (optype == "&&") { return BinOp::LG_AND; }
+    if (optype == "^")  { return BinOp::BW_XOR; }
     return BinOp::NIL_;
 }
 
-NodeVarDeclaration Parser::parse_declaration(const TokenType ttype, NodeScope& scope) {
+NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
+    std::unordered_map<std::string, SyntaxNode*>& loc_scp, const bool is_prog) {
+
     #pragma clang diagnostic ignored "-Wswitch"
     if (!validate_token(0, TokenType::VAR_IDENT)) {
         std::println(
@@ -87,6 +119,7 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype, NodeScope& s
             dec.kind = VarType::MUT;
             break;
         }
+        default: { assert(false && "Error: Unknown variable declaration type."); }
     }
 
     dec.ident = NodeIdentifier({
@@ -97,11 +130,19 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype, NodeScope& s
 
     std::println("ident: {}", dec.ident.name);
     dec.value = parse_expr();
-    // m_var_table.insert({ dec.ident.name, dec.value.get() });
-    scope.var_table.insert({ dec.ident.name, dec.value.get() });
-    // std::println("ID IN MAP: {}", );
-    // std::get<NodeBinaryExpr>(m_var_table.at(dec.ident.name)->m_node).print();
-    std::get<NodeBinaryExpr>(scope.var_table.at(dec.ident.name)->m_node).print();
+
+    if (m_program.main.var_table.contains(dec.ident.name) || loc_scp.contains(dec.ident.name)) {
+        std::println(stderr, "[{}:{}] Error: Re-definition of `{}`.",
+            dec.loc.line, dec.loc.col, dec.ident.name);
+        exit(EXIT_FAILURE);
+    }
+    if (is_prog) {
+        m_program.main.var_table.insert({ dec.ident.name, dec.value.get() });
+        std::get<NodeBinaryExpr>(m_program.main.var_table.at(dec.ident.name)->m_node).print();
+    } else {
+        loc_scp.insert({ dec.ident.name, dec.value.get() });
+        std::get<NodeBinaryExpr>(loc_scp.at(dec.ident.name)->m_node).print();
+    }
     std::println();
 
     return dec;
@@ -137,22 +178,23 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
         // next(); // eat ')'
     }
     if (validate_token(0, TokenType::DELIM_SEMI)) return lhs;
-    if (validate_token(0, TokenType::DELIM_LCURLY)) return lhs; // for scopes
-    const auto tok = peek().value();
+    if (validate_token(1, TokenType::DELIM_LCURLY)) return lhs; // for scopes
+    auto [type, value, loc] = peek().value();
+    // std::println("This is what we have after paren parsing: {}", peek(1).value().value);
 
-    switch (tok.type) {
+    switch (type) {
         case TokenType::LIT_INT: {
             lhs->atom.emplace<NodeIntLiteral>(NodeIntLiteral({ 
-                .value = std::stoi(tok.value), 
-                .loc = tok.loc 
+                .value = std::stoi(value),
+                .loc = loc
             }));
             lhs->var_count++;
             break;
         }
         case TokenType::VAR_IDENT: {
             lhs->atom.emplace<NodeIdentifier>(NodeIdentifier({ 
-                .name = std::move(tok.value),
-                .loc = tok.loc 
+                .name = std::move(value),
+                .loc = loc
             }));
             lhs->var_count++;
             break;
@@ -194,7 +236,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
     return lhs;
 }
 
-NodeStmtIf Parser::parse_stmt_if() {
+NodeStmtIf Parser::parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
     if (!peek().has_value()) {
         std::println(stderr, "Error: Invalid conditional.");
         exit(EXIT_FAILURE);
@@ -205,75 +247,101 @@ NodeStmtIf Parser::parse_stmt_if() {
     }
 
     std::unique_ptr<SyntaxNode> cond { parse_expr() };
-    if (!validate_token(0, TokenType::DELIM_LCURLY)) {
-        std::println("Token here is: {}", peek().value().value);
-        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek().value().loc.line, peek().value().loc.col);
+    if (!validate_token(0, TokenType::DELIM_RPAREN)) {
+        std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
+        exit(EXIT_FAILURE);
+    }
+    if (!validate_token(1, TokenType::DELIM_LCURLY)) {
+        std::println("Token here is: {}", peek(1).value().value);
+        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
     return NodeStmtIf {
         .cond = std::move(cond),
-        .scope = parse_stmt(false),
+        .scope = parse_stmt(false, loc_scp),
     };
 }
 
-NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype) {
+NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
+    const std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
     if (!peek(0).has_value()) {
         std::println(stderr, "[{}:{}] Error: Missing statement or expression after `exit`.",
                     peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
-    NodeStmtExit exit;
-    exit.loc.line = peek().value().loc.line;
-    exit.loc.col = peek().value().loc.col;
+    NodeStmtExit exit_;
+    exit_.loc.line = peek().value().loc.line;
+    exit_.loc.col = peek().value().loc.col;
 
     switch (ttype) {
         case TokenType::VAR_IDENT: {
-            exit.exit_code->m_node = NodeIdentifier({
+            if (!loc_scp.contains(peek().value().value) &&
+                !m_program.main.var_table.contains(peek().value().value)) {
+                std::println(stderr, "[{}:{}]Error: Unknown symbol `{}`",
+                    peek().value().loc.line, peek().value().loc.col,
+                    peek().value().value);
+                exit(EXIT_FAILURE);
+            }
+
+            exit_.exit_code = std::make_unique<SyntaxNode>(NodeIdentifier{
                 .name = std::move(peek().value().value),
                 .loc = { peek().value().loc.line, peek().value().loc.col }
             });
+            next(); // eat identifier
             break;
         }
-        default: { exit.exit_code = parse_expr(); }
+        default: { exit_.exit_code = parse_expr(); }
     }
-    return exit;
+    return exit_;
 }
-std::unique_ptr<NodeScope> Parser::parse_stmt(const bool is_prog) {
-    // is_prog = true;
-    auto scope = std::make_unique<NodeScope>();
+// std::unique_ptr<NodeScope> Parser::parse_stmt(const bool is_prog,
+NodeScope Parser::parse_stmt(const bool is_prog,
+    std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
+    // auto scope = std::make_unique<NodeScope>();
+    NodeScope scope{};
     const auto clause_func = [&] () -> bool {
         return is_prog ? peek().has_value()
-                       : !validate_token(0, TokenType::DELIM_RCURLY);
+                       : !validate_token(0, TokenType::DELIM_RCURLY) && peek().has_value();
     };
+
+    // scope->var_table.insert(loc_scp.begin(), loc_scp.end());
+    scope.var_table.insert(loc_scp.begin(), loc_scp.end());
 
     while (clause_func()) {
         const auto peeked = peek().value();
         next();
 
         switch (peeked.type) {
-            case TokenType::KW_LET:
-            case TokenType::KW_MUT:{
-                scope->stmts.emplace_back(parse_declaration(peeked.type, *scope));
-                break;
-            }
-            case TokenType::KW_EXIT: {
-                scope->stmts.emplace_back(parse_stmt_exit(peeked.type));
-                break;
-            }
-            case TokenType::KW_IF: {
-                std::println("in iffff");
-                scope->stmts.emplace_back(parse_stmt_if());
-                break;
-            }
+        case TokenType::DELIM_LCURLY: { // raw explicit scope
+            auto [stmts, var_table, loc] = std::move(parse_stmt(false, scope.var_table));
+            scope.var_table.insert(var_table.begin(), var_table.end());
+            scope.stmts.insert(scope.stmts.end(), std::make_move_iterator(stmts.begin()), std::make_move_iterator(stmts.end()));
+            break;
+        }
+        case TokenType::KW_LET:
+        case TokenType::KW_MUT:{
+            scope.stmts.emplace_back(parse_declaration(peeked.type, scope.var_table, is_prog));
+            break;
+        }
+        case TokenType::KW_EXIT: {
+            scope.stmts.emplace_back(parse_stmt_exit(peek().value().type, scope.var_table));
+            break;
+        }
+        case TokenType::KW_IF: {
+            //
+            auto if_res = std::move(parse_stmt_if(scope.var_table));
+            scope.var_table.insert(if_res.scope.var_table.begin(), if_res.scope.var_table.end());
+            scope.stmts.emplace_back(std::move(if_res));
+            break;
+        }
         }
     }
     return scope;
 }
 
+// TODO: Fix scope issue; outerscope not vis in inner scope
+
 NodeProgram&& Parser::create_program() {
-    const auto res{ parse_stmt(true) };
-    m_program.main = std::move(*(res));
-    //NOTE: This is lowkey invalid i think (use after move)
-    m_program.var_table = std::move(parse_stmt(true)->var_table);
+    m_program.main = parse_stmt(true, m_program.main.var_table) ;
     return std::move(m_program);
 }

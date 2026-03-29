@@ -21,10 +21,23 @@ NodeType SyntaxNode::get_node_type() const {
 
 std::string NodeBinaryExpr::op_to_string(const BinOp bop) {
     switch (bop) {
-        case BinOp::ADD: return "+";
-        case BinOp::SUB: return "-";
-        case BinOp::MUL: return "*";
-        case BinOp::DIV: return "/";
+    case BinOp::ADD:     return "+";
+    case BinOp::SUB:     return "-";
+    case BinOp::MUL:     return "*";
+    case BinOp::DIV:     return "/";
+    case BinOp::PWR:     return "**";
+    case BinOp::EQ:      return "=";
+    case BinOp::EQUIV:   return "==";
+    case BinOp::NEQUIV:  return "!=";
+    case BinOp::LTE:     return "<=";
+    case BinOp::GTE:     return ">=";
+    case BinOp::LT:      return "<";
+    case BinOp::GT:      return ">";
+    case BinOp::BW_OR:   return "|";
+    case BinOp::BW_AND:  return "&";
+    case BinOp::BW_XOR:  return "^";
+    case BinOp::LG_OR:   return "||";
+    case BinOp::LG_AND:  return "&&";
     }
 }
 

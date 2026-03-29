@@ -10,7 +10,6 @@
 class Parser {
   public:
     explicit Parser(std::vector<Token> &&toks) noexcept;
-
     NodeProgram&& create_program();
 
   private:
@@ -26,11 +25,15 @@ class Parser {
     [[nodiscard]]    bool validate_token(size_t offset, TokenType ttype, BinOp bop) const;
     [[nodiscard]]    std::optional<Token> peek(size_t offset) const;
     [[maybe_unused]] std::optional<Token> next();
-    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype, NodeScope& scope);
+    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype,
+        std::unordered_map<std::string, SyntaxNode*>& loc_scp, const bool is_prog);
     [[nodiscard]]    std::unique_ptr<SyntaxNode> parse_expr();
     [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
-    [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype);
-    [[nodiscard]]    NodeStmtIf parse_stmt_if();
-    [[nodiscard]]    std::unique_ptr<NodeScope> parse_stmt(bool is_prog);
+    [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype,
+        const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    [[nodiscard]]    NodeStmtIf parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    // [[nodiscard]]    std::unique_ptr<NodeScope> parse_stmt(bool is_prog,
+    [[nodiscard]]    NodeScope parse_stmt(bool is_prog,
+        std::unordered_map<std::string, SyntaxNode*>& loc_scp);
     friend class ParserTests;
 };

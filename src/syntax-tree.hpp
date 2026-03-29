@@ -21,12 +21,19 @@ enum class BinOp {
     SUB,
     MUL,
     DIV,
+    PWR,
+    BW_OR,
+    BW_AND,
+    BW_XOR,
+    LG_OR,
+    LG_AND,
     EQ,
+    EQUIV,
+    NEQUIV,
     LT,
     GT,
     LTE,
     GTE,
-    EQUIV,
     NIL_,
 };
 
@@ -98,21 +105,12 @@ struct NodeScope {
 };
 
 struct NodeProgram {
-    std::unordered_map<std::string, SyntaxNode*> var_table;
     NodeScope main;
-
-    [[nodiscard]] const SyntaxNode* lookup_node(const std::string &ident) const {
-        if (ident.empty()) {
-            std::println(stderr, "Error: Identifier required.");
-            exit(EXIT_FAILURE);
-        }
-        return var_table.at(ident);
-    }
 };
 
 struct NodeStmtIf {
     std::unique_ptr<SyntaxNode> cond;
-    std::unique_ptr<NodeScope> scope;
+    NodeScope scope;
 };
 
 struct SyntaxNode {
