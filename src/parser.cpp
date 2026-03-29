@@ -262,6 +262,21 @@ NodeStmtIf Parser::parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& l
     };
 }
 
+NodeStmtElse Parser::parse_stmt_else(std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
+    if (!peek().has_value()) {
+        std::println(stderr, "Error: Invalid conditional.");
+        exit(EXIT_FAILURE);
+    }
+    if (!validate_token(1, TokenType::DELIM_LCURLY)) {
+        std::println("Token here is: {}", peek(1).value().value);
+        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
+        exit(EXIT_FAILURE);
+    }
+    return NodeStmtElse {
+        .scope = parse_stmt(false, loc_scp),
+    };
+}
+
 NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
     const std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
     if (!peek(0).has_value()) {
@@ -333,6 +348,12 @@ NodeScope Parser::parse_stmt(const bool is_prog,
             auto if_res = std::move(parse_stmt_if(scope.var_table));
             scope.var_table.insert(if_res.scope.var_table.begin(), if_res.scope.var_table.end());
             scope.stmts.emplace_back(std::move(if_res));
+            break;
+        }
+        case TokenType::KW_ELSE: {
+            auto else_res = std::move(parse_stmt_else(scope.var_table));
+            scope.var_table.insert(else_res.scope.var_table.begin(), else_res.scope.var_table.end());
+            scope.stmts.emplace_back(std::move(else_res));
             break;
         }
         }

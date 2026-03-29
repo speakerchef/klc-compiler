@@ -134,6 +134,13 @@ void CodeGenerator::emit_stmt_if(const NodeStmtIf& node) {
     m_os << label_else << ":\n";
 }
 
+void CodeGenerator::emit_stmt_else(const NodeStmtElse& node) {
+    const std::string label_else = std::format("label{}", m_lbl_count++);
+    m_os << std::format("\tB {}\n", label_else);
+    emit(node.scope);
+    m_os << label_else << ":\n";
+}
+
 int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     // node.print();
     const auto n_atom_id = std::get_if<NodeIdentifier>(&node.atom);
@@ -265,6 +272,10 @@ void CodeGenerator::emit(const NodeScope& node) {
         }
         case NodeType::STMT_IF: {
             emit_stmt_if(std::get<NodeStmtIf>(stmt.m_node));
+            break;
+        }
+        case NodeType::STMT_ELSE: {
+            emit_stmt_else(std::get<NodeStmtElse>(stmt.m_node));
             break;
         }
         case NodeType::SCOPE_NODE: {

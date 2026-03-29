@@ -20,6 +20,7 @@ enum class TokenType {
     KW_LET,
     KW_MUT,
     KW_IF,
+    KW_ELSE,
     KW_INT,
     BIN_OP,
     OP_EQUALS,

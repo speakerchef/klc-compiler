@@ -15,6 +15,7 @@ NodeType SyntaxNode::get_node_type() const {
         [](const NodeIntLiteral&)                      { return NodeType::LIT_INT; },
         [](const NodeStmtExit&)                        { return NodeType::STMT_EXIT; },
         [](const NodeStmtIf&)                          { return NodeType::STMT_IF; },
+        [](const NodeStmtElse&)                        { return NodeType::STMT_ELSE; },
     };
     return std::visit(node_typer, m_node);
 }
