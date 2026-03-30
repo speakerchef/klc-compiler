@@ -25,8 +25,8 @@ class Parser {
     [[nodiscard]]    bool validate_token(size_t offset, TokenType ttype, BinOp bop) const;
     [[nodiscard]]    std::optional<Token> peek(size_t offset) const;
     [[maybe_unused]] std::optional<Token> next();
-    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype,
-                        std::unordered_map<std::string, SyntaxNode*>& loc_scp, const bool is_prog);
+    [[nodiscard]]    NodeVarDeclaration parse_declaration(TokenType ttype, 
+                                NodeScope& loc_scp, bool is_prog, bool is_reassign);
     [[nodiscard]]    std::unique_ptr<SyntaxNode> parse_expr();
     [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype,

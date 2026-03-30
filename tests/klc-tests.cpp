@@ -54,7 +54,7 @@ static int run_program(const std::string &source) {
 
 static const NodeBinaryExpr &get_decl_expr(const NodeProgram &prog,
                                            size_t idx) {
-  const auto &decl = std::get<NodeVarDeclaration>(prog.main.stmts[idx].m_node);
+  const auto &decl = std::get<NodeVarDeclaration>(prog.main.stmts[idx]->m_node);
   return std::get<NodeBinaryExpr>(decl.value->m_node);
 }
 

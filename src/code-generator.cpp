@@ -21,24 +21,24 @@ CodeGenerator::~CodeGenerator() = default;
 
 void CodeGenerator::get_count_vars(const NodeScope& node) {
     for (const auto& stmt : node.stmts){
-        switch (stmt.get_node_type()) {
+        switch (stmt->get_node_type()) {
         case NodeType::VAR_DECL: {
-            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeVarDeclaration>(stmt.m_node).value->m_node )) {
+            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeVarDeclaration>(stmt->m_node).value->m_node )) {
                 m_var_count += expr->var_count;
             }
             break;
         }
         case NodeType::STMT_EXIT: {
-            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeStmtExit>(stmt.m_node).exit_code->m_node )) {
+            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node )) {
                 m_var_count += expr->var_count;
             }
-            else if ( std::get_if<NodeIdentifier>( &std::get<NodeStmtExit>(stmt.m_node).exit_code->m_node )) {
+            else if ( std::get_if<NodeIdentifier>( &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node )) {
                 m_var_count++;
             }
             break;
         }
         case NodeType::STMT_IF: {
-            const auto&[cond, scp] = std::get<NodeStmtIf>(stmt.m_node);
+            const auto&[cond, scp] = std::get<NodeStmtIf>(stmt->m_node);
             get_count_vars(scp);
             if (const auto& expr = std::get_if<NodeBinaryExpr>(&cond->m_node)) {
                 m_var_count += expr->var_count;
@@ -49,7 +49,7 @@ void CodeGenerator::get_count_vars(const NodeScope& node) {
             break;
         }
         case NodeType::STMT_ELIF: {
-            const auto&[cond, scp] = std::get<NodeStmtElif>(stmt.m_node);
+            const auto&[cond, scp] = std::get<NodeStmtElif>(stmt->m_node);
             get_count_vars(scp);
             if (const auto& expr = std::get_if<NodeBinaryExpr>(&cond->m_node)) {
                 m_var_count += expr->var_count;
@@ -60,12 +60,12 @@ void CodeGenerator::get_count_vars(const NodeScope& node) {
             break;
         }
         case NodeType::STMT_ELSE: {
-            const auto& scp = ((std::get<NodeStmtElse>(stmt.m_node)).scope);
+            const auto& scp = ((std::get<NodeStmtElse>(stmt->m_node)).scope);
             get_count_vars(scp);
             break;
         }
         case NodeType::SCOPE_NODE: {
-            get_count_vars(std::get<NodeScope>(stmt.m_node));
+            get_count_vars(std::get<NodeScope>(stmt->m_node));
             break;
         }
         default: assert(false && "Unknown node type!");
@@ -78,7 +78,7 @@ const SyntaxNode* CodeGenerator::peek(const size_t offset = 0) const {
         ( m_node_ptr + offset ) >= m_program.main.stmts.size()) {
         return nullptr;
     }
-    return &m_program.main.stmts.at(m_node_ptr + offset);
+    return m_program.main.stmts.at(m_node_ptr + offset).get();
 }
 
 const SyntaxNode* CodeGenerator::next() {
@@ -86,7 +86,7 @@ const SyntaxNode* CodeGenerator::next() {
        ( m_node_ptr ) >= m_program.main.stmts.size()) {
         return nullptr;
     }
-    return &m_program.main.stmts.at( m_node_ptr++ );
+    return m_program.main.stmts.at( m_node_ptr++ ).get();
 }
 
 void CodeGenerator::emit_epilogue() {
@@ -107,7 +107,8 @@ void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     }
 
     int stack_loc = emit_expr(bin_expr);
-    m_cached_var.insert({ ident.name, stack_loc });
+    // m_cached_var.insert({ ident.name, stack_loc });
+    m_cached_var.insert_or_assign( ident.name, stack_loc );
 }
 
 void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node) {
@@ -279,31 +280,31 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
 void CodeGenerator::emit(const NodeScope& node) {
 #pragma clang diagnostic ignored "-Wswitch"
     for (const auto &stmt : node.stmts) {
-        switch (stmt.get_node_type()) {
+        switch (stmt->get_node_type()) {
         case NodeType::VAR_DECL: {
-            emit_decl(std::get<NodeVarDeclaration>(stmt.m_node));
+            emit_decl(std::get<NodeVarDeclaration>(stmt->m_node));
             break;
         }
         case NodeType::STMT_EXIT: {
-            emit_stmt_exit(std::get<NodeStmtExit>(stmt.m_node));
+            emit_stmt_exit(std::get<NodeStmtExit>(stmt->m_node));
             break;
         }
         case NodeType::STMT_IF: {
-            auto& stmt_if = std::get<NodeStmtIf>(stmt.m_node);
+            auto& stmt_if = std::get<NodeStmtIf>(stmt->m_node);
             emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_if));
             break;
         }
         case NodeType::STMT_ELIF: {
-            auto& stmt_elif = std::get<NodeStmtElif>(stmt.m_node);
+            auto& stmt_elif = std::get<NodeStmtElif>(stmt->m_node);
             emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_elif));
             break;
         }
         case NodeType::STMT_ELSE: {
-            emit_stmt_else(std::get<NodeStmtElse>(stmt.m_node));
+            emit_stmt_else(std::get<NodeStmtElse>(stmt->m_node));
             break;
         }
         case NodeType::SCOPE_NODE: {
-            emit(std::get<NodeScope>(stmt.m_node));
+            emit(std::get<NodeScope>(stmt->m_node));
             break;
         }
         default: assert(false && "Unknown node type!");

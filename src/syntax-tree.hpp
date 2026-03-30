@@ -101,7 +101,7 @@ struct NodeStmtExit {
 };
 
 struct NodeScope {
-    std::vector<SyntaxNode> stmts;
+    std::vector<std::unique_ptr<SyntaxNode>> stmts;
     std::unordered_map<std::string, SyntaxNode*> var_table;
     LocData loc;
 };

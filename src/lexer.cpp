@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <print>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -154,6 +153,7 @@ Token Lexer::classify_token(const std::string &buf) noexcept {
     else if (buf == ";")    { tok.type = TokenType::DELIM_SEMI; } 
     else if (buf == "exit") { tok.type = TokenType::KW_EXIT; } 
     else if (buf == "let")  { tok.type = TokenType::KW_LET; } 
+    else if (buf == "mut")  { tok.type = TokenType::KW_MUT; } 
     else if (buf == "if")   { tok.type = TokenType::KW_IF; }
     else if (buf == "elif") { tok.type = TokenType::KW_ELIF; }
     else if (buf == "else") { tok.type = TokenType::KW_ELSE; }

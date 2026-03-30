@@ -95,57 +95,60 @@ BinOp Parser::set_op(const std::string &optype) {
 }
 
 NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
-    std::unordered_map<std::string, SyntaxNode*>& loc_scp, const bool is_prog) {
+    NodeScope& loc_scp, const bool is_prog, const bool is_reassign) {
 
     #pragma clang diagnostic ignored "-Wswitch"
     if (!validate_token(0, TokenType::VAR_IDENT)) {
         std::println(
-            "[{}:{}] Error: Missing declaration identifier after `let`.",
+            "[{}:{}] Error: Expected identifier after `let`.",
             peek().value().loc.line, peek().value().loc.col);
+        std::println("This is what failed: {}", peek().value().value);
         exit(EXIT_FAILURE);
     }
     if (!validate_token(1, TokenType::NIL_, BinOp::EQ)) {
-        std::println("[{}:{}] Error: Missing `=` after variable declaration `{}`",
+        std::println("[{}:{}] Error: Expected `=` after declaration `{}`",
             peek().value().loc.line, peek().value().loc.col, peek(0).value().value);
         exit(EXIT_FAILURE);
     }
 
-    NodeVarDeclaration dec{};
-    switch (ttype) {
-        case TokenType::KW_LET: {
-            dec.kind = VarType::LET;
-            break;
-        }
-        case TokenType::KW_MUT: {
-            dec.kind = VarType::MUT;
-            break;
-        }
-        default: { assert(false && "Error: Unknown variable declaration type."); }
-    }
 
-    dec.ident = NodeIdentifier({
-        .name = std::move(peek().value().value),
-        .loc = next().value().loc
-    });
+    NodeVarDeclaration dec{};
+    if (is_reassign) {
+        // const auto it = (loc_scp.var_table.find(peek().value().value));
+        // loc_scp.var_table.erase(it);
+        dec.kind = VarType::MUT;
+        dec.ident.name = peek().value().value;
+        next(); // eat ident
+    }
+    else {
+        switch (ttype) {
+            case TokenType::KW_LET: {
+                dec.kind = VarType::LET;
+                break;
+            }
+            case TokenType::KW_MUT: {
+                dec.kind = VarType::MUT;
+                break;
+            }
+            default: { assert(false && "Error: Unknown variable declaration type."); }
+        }
+
+        dec.ident = NodeIdentifier({
+            .name = std::move(peek().value().value),
+            .loc = peek().value().loc
+        });
+
+        if (m_program.main.var_table.contains(dec.ident.name) || loc_scp.var_table.contains(dec.ident.name)) {
+            std::println(stderr, "[{}:{}] Error: Re-definition of `{}`.",
+                peek().value().loc.line, peek().value().loc.col - 1, dec.ident.name);
+            exit(EXIT_FAILURE);
+        }
+        next(); // eat ident
+    }
     next(); // eat `=`
 
     std::println("ident: {}", dec.ident.name);
     dec.value = parse_expr();
-
-    if (m_program.main.var_table.contains(dec.ident.name) || loc_scp.contains(dec.ident.name)) {
-        std::println(stderr, "[{}:{}] Error: Re-definition of `{}`.",
-            dec.loc.line, dec.loc.col, dec.ident.name);
-        exit(EXIT_FAILURE);
-    }
-    if (is_prog) {
-        m_program.main.var_table.insert({ dec.ident.name, dec.value.get() });
-        std::get<NodeBinaryExpr>(m_program.main.var_table.at(dec.ident.name)->m_node).print();
-    } else {
-        loc_scp.insert({ dec.ident.name, dec.value.get() });
-        std::get<NodeBinaryExpr>(loc_scp.at(dec.ident.name)->m_node).print();
-    }
-    std::println();
-
     return dec;
 }
 
@@ -352,16 +355,42 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         case TokenType::DELIM_LCURLY: { // raw explicit scope
             auto [stmts, var_table, loc] = std::move(parse_stmt(false, scope));
             scope.var_table.insert(var_table.begin(), var_table.end());
-            scope.stmts.insert(scope.stmts.end(), std::make_move_iterator(stmts.begin()), std::make_move_iterator(stmts.end()));
+            scope.stmts.insert(scope.stmts.end(),
+                std::make_move_iterator(stmts.begin()),
+                std::make_move_iterator(stmts.end()));
             break;
         }
         case TokenType::KW_LET:
         case TokenType::KW_MUT:{
-            scope.stmts.emplace_back(parse_declaration(peeked.type, scope.var_table, is_prog));
+            auto res = parse_declaration(peeked.type, scope, is_prog, false);
+            const std::string id_name = res.ident.name;
+
+            scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
+            scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
             break;
         }
+        case TokenType::VAR_IDENT: {
+            std::println("Requested reassignment of `{}`", peeked.value);
+            if (scope.var_table.contains(peeked.value) && 
+                std::get<NodeVarDeclaration>(scope.var_table.at(peeked.value)->m_node).kind == VarType::MUT) {
+                std::println("Valid reassignment");
+                m_tok_ptr--;
+                auto res = parse_declaration(peeked.type, scope, is_prog, true);
+                const std::string id_name = res.ident.name;
+
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
+                scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+                break;
+            }
+            else {
+                std::println("Invalid reassignment");
+                exit(EXIT_FAILURE);
+            }
+        }
         case TokenType::KW_EXIT: {
-            scope.stmts.emplace_back(parse_stmt_exit(peek().value().type, scope.var_table));
+            scope.stmts.emplace_back(
+                std::make_unique<SyntaxNode>(
+                    parse_stmt_exit(peek().value().type, scope.var_table)));
             break;
         }
         case TokenType::KW_IF: {
@@ -372,14 +401,14 @@ NodeScope Parser::parse_stmt(const bool is_prog,
 
             auto[cond, scp]  = std::move(parse_stmt_if(scope));
             scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-            scope.stmts.emplace_back(NodeStmtIf(std::move(cond), std::move(scp)));
+            scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtIf(std::move(cond), std::move(scp))));
             // std::println("NEXTUP IF: {}", next().value().value);
                 next();
 
             while (validate_token(0, TokenType::KW_ELIF)) {
                 auto[cond, scp]  = std::move(parse_stmt_elif(scope));
                 scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-                scope.stmts.emplace_back(NodeStmtElif(std::move(cond), std::move(scp)));
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElif(std::move(cond), std::move(scp))));
                 // std::println("NEXTUP ELIF: {}", next().value().value);
                 next();
             }
@@ -387,7 +416,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
             if (validate_token(0, TokenType::KW_ELSE)) {
                 auto[scp] = std::move(parse_stmt_else(scope));
                 scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-                scope.stmts.emplace_back(NodeStmtElse(std::move(scp)));
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElse(std::move(scp))));
                 // std::println("NEXTUP ELSE: {}", next().value().value);
                 next();
             }
