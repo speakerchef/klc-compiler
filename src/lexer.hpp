@@ -22,6 +22,8 @@ enum class TokenType {
     KW_IF,
     KW_ELIF,
     KW_ELSE,
+    KW_WHILE,
+    KW_FOR,
     BIN_OP,
     OP_EQUALS,
     OP_ADD,

@@ -1,7 +1,13 @@
 mut x = 1;
-mut y = 0;
-let z = 100;
-x = z / 4;
-y = x * 2;
-x = (y + x) - z;
-exit x;
+mut i = 0;
+while (i < 20) {
+    if (x < 50) {
+        x = x * 2;
+    } elif (x < 200) {
+        x = x + 10;
+    } else {
+        x = x - 100;
+    }
+    i = i + 1;
+}
+exit x & 255;

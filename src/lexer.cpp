@@ -150,18 +150,20 @@ Token Lexer::classify_token(const std::string &buf) noexcept {
     if (buf.find_first_not_of("0123456789"))   { tok.type = TokenType::LIT_INT; }
     else if (buf.find_first_not_of("+-*/<>=|&^!"))    { tok.type = TokenType::BIN_OP; }
 
-    else if (buf == ";")    { tok.type = TokenType::DELIM_SEMI; } 
-    else if (buf == "exit") { tok.type = TokenType::KW_EXIT; } 
-    else if (buf == "let")  { tok.type = TokenType::KW_LET; } 
-    else if (buf == "mut")  { tok.type = TokenType::KW_MUT; } 
-    else if (buf == "if")   { tok.type = TokenType::KW_IF; }
-    else if (buf == "elif") { tok.type = TokenType::KW_ELIF; }
-    else if (buf == "else") { tok.type = TokenType::KW_ELSE; }
-    else if (buf == "(")    { tok.type = TokenType::DELIM_LPAREN; }
-    else if (buf == ")")    { tok.type = TokenType::DELIM_RPAREN; }
-    else if (buf == "{")    { tok.type = TokenType::DELIM_LCURLY; }
-    else if (buf == "}")    { tok.type = TokenType::DELIM_RCURLY; }
-    else                    { tok.type = TokenType::VAR_IDENT; }
+    else if (buf == ";")        { tok.type = TokenType::DELIM_SEMI; } 
+    else if (buf == "exit")     { tok.type = TokenType::KW_EXIT; } 
+    else if (buf == "let")      { tok.type = TokenType::KW_LET; } 
+    else if (buf == "mut")      { tok.type = TokenType::KW_MUT; } 
+    else if (buf == "if")       { tok.type = TokenType::KW_IF; }
+    else if (buf == "elif")     { tok.type = TokenType::KW_ELIF; }
+    else if (buf == "else")     { tok.type = TokenType::KW_ELSE; }
+    else if (buf == "while")    { tok.type = TokenType::KW_WHILE; }
+    else if (buf == "for")      { tok.type = TokenType::KW_FOR; }
+    else if (buf == "(")        { tok.type = TokenType::DELIM_LPAREN; }
+    else if (buf == ")")        { tok.type = TokenType::DELIM_RPAREN; }
+    else if (buf == "{")        { tok.type = TokenType::DELIM_LCURLY; }
+    else if (buf == "}")        { tok.type = TokenType::DELIM_RCURLY; }
+    else                        { tok.type = TokenType::VAR_IDENT; }
 
     tok.value = buf;
     return tok;

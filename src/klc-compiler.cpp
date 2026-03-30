@@ -1,4 +1,3 @@
-#include "syntax-tree.hpp"
 #include "code-generator.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
