@@ -111,25 +111,30 @@ struct NodeScope {
 struct NodeStmtIf {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
+    LocData loc;
 };
 
 struct NodeStmtElif {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
+    LocData loc;
 };
 
 struct NodeStmtElse {
     NodeScope scope;
+    LocData loc;
 };
 
 struct NodeStmtWhile {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
+    LocData loc;
 };
 
 struct NodeStmtFor {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
+    LocData loc;
 };
 
 struct NodeProgram {

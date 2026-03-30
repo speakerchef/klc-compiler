@@ -37,7 +37,7 @@ class CodeGenerator {
                              void emit_conditional(std::variant<const NodeStmtIf*, 
                                                    const NodeStmtElif*> node, 
                                                    const std::string& lbl_if, 
-                                                   const std::string& lbl_end,
+                                                   const std::string& lbl_else,
                                                    const std::string& lbl_elif,
                                                    const std::string& lbl_chain_end);
                              void emit_stmt_else(const NodeStmtElse& node);
