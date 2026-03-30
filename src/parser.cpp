@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <print>
@@ -211,7 +212,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
     }
 
     while (validate_token(0, TokenType::BIN_OP)) {
-        BinOp op = set_op(peek().value().value);
+        const BinOp op = set_op(peek().value().value);
         if (op == BinOp::EQ) {
             std::println(stderr, "[{}:{}]Error: Operator `=` not allowed in expression.", peek().value().loc.line, 
                          peek().value().loc.col);
@@ -244,6 +245,7 @@ NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
         std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
+    next();
 
     std::unique_ptr<SyntaxNode> cond { parse_expr() };
     if (!validate_token(0, TokenType::DELIM_RPAREN)) {
@@ -266,19 +268,20 @@ NodeStmtElif Parser::parse_stmt_elif(NodeScope& loc_scp) {
         std::println(stderr, "Error: Invalid conditional.");
         exit(EXIT_FAILURE);
     }
+    next();
     if (!validate_token(0, TokenType::DELIM_LPAREN)) {
         std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
 
-    std::unique_ptr<SyntaxNode> cond { parse_expr() };
+    std::unique_ptr cond { parse_expr() };
     if (!validate_token(0, TokenType::DELIM_RPAREN)) {
         std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
         std::println("Token here is: {}", peek(1).value().value);
-        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
+        std::println(stderr, "[{}:{}]Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
     return NodeStmtElif {
@@ -292,11 +295,7 @@ NodeStmtElse Parser::parse_stmt_else(NodeScope& loc_scp) {
         std::println(stderr, "Error: Invalid conditional.");
         exit(EXIT_FAILURE);
     }
-    if (!validate_token(0, TokenType::DELIM_LCURLY)) {
-        std::println("Token here is: {}", peek().value().value);
-        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
+    next(); // eat `else`
     return NodeStmtElse {
         .scope = parse_stmt(false, loc_scp),
     };
@@ -366,40 +365,39 @@ NodeScope Parser::parse_stmt(const bool is_prog,
             break;
         }
         case TokenType::KW_IF: {
-            //NOTE: always pass the scope var_table separately in all 
+            //NOTE: always pass the conditional scope var_table separately in all
             //cases where scopes are involved
-            auto if_res = std::move(parse_stmt_if(scope));
-            scope.var_table.insert(if_res.scope.var_table.begin(), if_res.scope.var_table.end());
-            scope.stmts.emplace_back(std::move(if_res));
+
+            std::println("AT IF");
+
+            auto[cond, scp]  = std::move(parse_stmt_if(scope));
+            scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
+            scope.stmts.emplace_back(NodeStmtIf(std::move(cond), std::move(scp)));
+            // std::println("NEXTUP IF: {}", next().value().value);
+                next();
+
+            while (validate_token(0, TokenType::KW_ELIF)) {
+                auto[cond, scp]  = std::move(parse_stmt_elif(scope));
+                scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
+                scope.stmts.emplace_back(NodeStmtElif(std::move(cond), std::move(scp)));
+                // std::println("NEXTUP ELIF: {}", next().value().value);
+                next();
+            }
+
+            if (validate_token(0, TokenType::KW_ELSE)) {
+                auto[scp] = std::move(parse_stmt_else(scope));
+                scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
+                scope.stmts.emplace_back(NodeStmtElse(std::move(scp)));
+                // std::println("NEXTUP ELSE: {}", next().value().value);
+                next();
+            }
             break;
         }
-        case TokenType::KW_ELIF: {
-            // if ((loc_scp.stmts.empty() ||
-            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_IF)) &&
-            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_ELIF)) {
-            //     std::println(stderr, "[{}:{}]Error: `elif` must accompany an `if` conditional.",
-            //                  peeked.loc.line, peeked.loc.col, scope.stmts.back().get_node_type() == NodeType::STMT_IF);
-            //     exit(EXIT_FAILURE);
-            // }
-            auto elif_res = std::move(parse_stmt_elif(scope));
-            scope.var_table.insert(elif_res.scope.var_table.begin(), elif_res.scope.var_table.end());
-            scope.stmts.emplace_back(std::move(elif_res));
-            break;
-        }
+        case TokenType::KW_ELIF: [[fallthrough]];
         case TokenType::KW_ELSE: {
-            // if ((loc_scp.stmts.empty() ||
-            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_IF)) &&
-            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_ELIF)) {
-            //     std::println(stderr, "[{}:{}]Error: `else` must accompany an `if` or `elif` conditional.",
-            //                  peeked.loc.line, peeked.loc.col, scope.stmts.back().get_node_type() == NodeType::STMT_IF);
-            //     exit(EXIT_FAILURE);
-            // }
-            //NOTE: Make this more robust:
-            // m_tok_ptr--;
-            auto else_res = std::move(parse_stmt_else(scope));
-            scope.var_table.insert(else_res.scope.var_table.begin(), else_res.scope.var_table.end());
-            scope.stmts.emplace_back(std::move(else_res));
-            break;
+            std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement.",
+                peek().value().loc.line, peek().value().loc.col - 5);
+            exit(EXIT_FAILURE);
         }
         }
     }
