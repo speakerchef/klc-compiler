@@ -33,7 +33,8 @@ class CodeGenerator {
     [[nodiscard]]    int32_t emit_expr(const NodeBinaryExpr& node);
                      void get_count_vars(const NodeScope& node);
                      void emit_stmt_exit(const NodeStmtExit& node);
-                     void emit_stmt_if(const NodeStmtIf& node);
+                     // void emit_conditional(const std::variant<NodeStmtIf, NodeStmtElif>& node);
+                     void emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*> node);
                      void emit_stmt_else(const NodeStmtElse& node);
                      void emit_decl(const NodeVarDeclaration& node);
                      void emit_epilogue();

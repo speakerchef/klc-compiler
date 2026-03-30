@@ -49,6 +49,7 @@ enum class NodeType {
     STMT_EXIT,
     STMT_IF,
     STMT_ELSE,
+    STMT_ELIF,
 };
 
 enum class VarType {
@@ -110,6 +111,11 @@ struct NodeStmtIf {
     NodeScope scope;
 };
 
+struct NodeStmtElif {
+    std::unique_ptr<SyntaxNode> cond;
+    NodeScope scope;
+};
+
 struct NodeStmtElse {
     NodeScope scope;
 };
@@ -122,7 +128,7 @@ struct SyntaxNode {
   public:
     std::variant<NodeScope, NodeBinaryExpr, NodeUnaryExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit, NodeStmtIf, NodeStmtElse> m_node;
+                 NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif> m_node;
     
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;

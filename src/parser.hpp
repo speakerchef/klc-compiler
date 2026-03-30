@@ -31,9 +31,14 @@ class Parser {
     [[nodiscard]]    std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]    NodeStmtExit parse_stmt_exit(TokenType ttype,
                         const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
-    [[nodiscard]]    NodeStmtIf parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
-    [[nodiscard]]    NodeStmtElse parse_stmt_else(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
-    [[nodiscard]]    NodeScope parse_stmt(bool is_prog,
-        std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    // [[nodiscard]]    NodeStmtIf parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    [[nodiscard]]    NodeStmtIf parse_stmt_if(NodeScope& loc_scp);
+    // [[nodiscard]]    NodeStmtElif parse_stmt_elif(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    [[nodiscard]]    NodeStmtElif parse_stmt_elif(NodeScope& loc_scp);
+    // [[nodiscard]]    NodeStmtElse parse_stmt_else(std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    [[nodiscard]]    NodeStmtElse parse_stmt_else(NodeScope& loc_scp);
+    // [[nodiscard]]    NodeScope parse_stmt(bool is_prog,
+    //     std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+    [[nodiscard]]    NodeScope parse_stmt(bool is_prog, NodeScope& loc_scp);
     friend class ParserTests;
 };

@@ -180,7 +180,6 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
     if (validate_token(0, TokenType::DELIM_SEMI)) return lhs;
     if (validate_token(1, TokenType::DELIM_LCURLY)) return lhs; // for scopes
     auto [type, value, loc] = peek().value();
-    // std::println("This is what we have after paren parsing: {}", peek(1).value().value);
 
     switch (type) {
         case TokenType::LIT_INT: {
@@ -236,7 +235,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
     return lhs;
 }
 
-NodeStmtIf Parser::parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
+NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
     if (!peek().has_value()) {
         std::println(stderr, "Error: Invalid conditional.");
         exit(EXIT_FAILURE);
@@ -262,14 +261,40 @@ NodeStmtIf Parser::parse_stmt_if(std::unordered_map<std::string, SyntaxNode*>& l
     };
 }
 
-NodeStmtElse Parser::parse_stmt_else(std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
+NodeStmtElif Parser::parse_stmt_elif(NodeScope& loc_scp) {
     if (!peek().has_value()) {
         std::println(stderr, "Error: Invalid conditional.");
+        exit(EXIT_FAILURE);
+    }
+    if (!validate_token(0, TokenType::DELIM_LPAREN)) {
+        std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
+        exit(EXIT_FAILURE);
+    }
+
+    std::unique_ptr<SyntaxNode> cond { parse_expr() };
+    if (!validate_token(0, TokenType::DELIM_RPAREN)) {
+        std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
         std::println("Token here is: {}", peek(1).value().value);
         std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
+        exit(EXIT_FAILURE);
+    }
+    return NodeStmtElif {
+        .cond = std::move(cond),
+        .scope = parse_stmt(false, loc_scp),
+    };
+}
+
+NodeStmtElse Parser::parse_stmt_else(NodeScope& loc_scp) {
+    if (!peek().has_value()) {
+        std::println(stderr, "Error: Invalid conditional.");
+        exit(EXIT_FAILURE);
+    }
+    if (!validate_token(0, TokenType::DELIM_LCURLY)) {
+        std::println("Token here is: {}", peek().value().value);
+        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
     return NodeStmtElse {
@@ -309,18 +334,16 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
     }
     return exit_;
 }
-// std::unique_ptr<NodeScope> Parser::parse_stmt(const bool is_prog,
+
 NodeScope Parser::parse_stmt(const bool is_prog,
-    std::unordered_map<std::string, SyntaxNode*>& loc_scp) {
-    // auto scope = std::make_unique<NodeScope>();
+       NodeScope& loc_scp) {
     NodeScope scope{};
     const auto clause_func = [&] () -> bool {
         return is_prog ? peek().has_value()
                        : !validate_token(0, TokenType::DELIM_RCURLY) && peek().has_value();
     };
 
-    // scope->var_table.insert(loc_scp.begin(), loc_scp.end());
-    scope.var_table.insert(loc_scp.begin(), loc_scp.end());
+    scope.var_table.insert(loc_scp.var_table.begin(), loc_scp.var_table.end());
 
     while (clause_func()) {
         const auto peeked = peek().value();
@@ -328,7 +351,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
 
         switch (peeked.type) {
         case TokenType::DELIM_LCURLY: { // raw explicit scope
-            auto [stmts, var_table, loc] = std::move(parse_stmt(false, scope.var_table));
+            auto [stmts, var_table, loc] = std::move(parse_stmt(false, scope));
             scope.var_table.insert(var_table.begin(), var_table.end());
             scope.stmts.insert(scope.stmts.end(), std::make_move_iterator(stmts.begin()), std::make_move_iterator(stmts.end()));
             break;
@@ -345,13 +368,35 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         case TokenType::KW_IF: {
             //NOTE: always pass the scope var_table separately in all 
             //cases where scopes are involved
-            auto if_res = std::move(parse_stmt_if(scope.var_table));
+            auto if_res = std::move(parse_stmt_if(scope));
             scope.var_table.insert(if_res.scope.var_table.begin(), if_res.scope.var_table.end());
             scope.stmts.emplace_back(std::move(if_res));
             break;
         }
+        case TokenType::KW_ELIF: {
+            // if ((loc_scp.stmts.empty() ||
+            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_IF)) &&
+            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_ELIF)) {
+            //     std::println(stderr, "[{}:{}]Error: `elif` must accompany an `if` conditional.",
+            //                  peeked.loc.line, peeked.loc.col, scope.stmts.back().get_node_type() == NodeType::STMT_IF);
+            //     exit(EXIT_FAILURE);
+            // }
+            auto elif_res = std::move(parse_stmt_elif(scope));
+            scope.var_table.insert(elif_res.scope.var_table.begin(), elif_res.scope.var_table.end());
+            scope.stmts.emplace_back(std::move(elif_res));
+            break;
+        }
         case TokenType::KW_ELSE: {
-            auto else_res = std::move(parse_stmt_else(scope.var_table));
+            // if ((loc_scp.stmts.empty() ||
+            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_IF)) &&
+            //     (loc_scp.stmts.back().get_node_type() != NodeType::STMT_ELIF)) {
+            //     std::println(stderr, "[{}:{}]Error: `else` must accompany an `if` or `elif` conditional.",
+            //                  peeked.loc.line, peeked.loc.col, scope.stmts.back().get_node_type() == NodeType::STMT_IF);
+            //     exit(EXIT_FAILURE);
+            // }
+            //NOTE: Make this more robust:
+            // m_tok_ptr--;
+            auto else_res = std::move(parse_stmt_else(scope));
             scope.var_table.insert(else_res.scope.var_table.begin(), else_res.scope.var_table.end());
             scope.stmts.emplace_back(std::move(else_res));
             break;
@@ -362,6 +407,6 @@ NodeScope Parser::parse_stmt(const bool is_prog,
 }
 
 NodeProgram&& Parser::create_program() {
-    m_program.main = parse_stmt(true, m_program.main.var_table) ;
+    m_program.main = parse_stmt(true, m_program.main) ;
     return std::move(m_program);
 }

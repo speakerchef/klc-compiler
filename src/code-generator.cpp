@@ -38,14 +38,30 @@ void CodeGenerator::get_count_vars(const NodeScope& node) {
             break;
         }
         case NodeType::STMT_IF: {
-            const auto& scp = ((std::get<NodeStmtIf>(stmt.m_node)).scope);
+            const auto&[cond, scp] = std::get<NodeStmtIf>(stmt.m_node);
             get_count_vars(scp);
-            if (const auto& expr = std::get_if<NodeBinaryExpr>( &std::get<NodeStmtIf>(stmt.m_node).cond->m_node )) {
+            if (const auto& expr = std::get_if<NodeBinaryExpr>(&cond->m_node)) {
                 m_var_count += expr->var_count;
             }
-            else if ( std::get_if<NodeIdentifier>( &std::get<NodeStmtIf>(stmt.m_node).cond->m_node )) {
+            else if ( std::get_if<NodeIdentifier>(&cond->m_node)) {
                 m_var_count++;
             }
+            break;
+        }
+        case NodeType::STMT_ELIF: {
+            const auto&[cond, scp] = std::get<NodeStmtElif>(stmt.m_node);
+            get_count_vars(scp);
+            if (const auto& expr = std::get_if<NodeBinaryExpr>(&cond->m_node)) {
+                m_var_count += expr->var_count;
+            }
+            else if ( std::get_if<NodeIdentifier>(&cond->m_node)) {
+                m_var_count++;
+            }
+            break;
+        }
+        case NodeType::STMT_ELSE: {
+            const auto& scp = ((std::get<NodeStmtElse>(stmt.m_node)).scope);
+            get_count_vars(scp);
             break;
         }
         case NodeType::SCOPE_NODE: {
@@ -119,8 +135,13 @@ void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node) {
 
 }
 
-void CodeGenerator::emit_stmt_if(const NodeStmtIf& node) {
-    int stack_loc = emit_expr(std::get<NodeBinaryExpr>(node.cond->m_node));
+void CodeGenerator::emit_conditional(const std::variant<const NodeStmtIf*, const NodeStmtElif*> node){
+    const auto stmt_if = std::get_if<const NodeStmtIf*>(&node);
+    const auto stmt_elif = std::get_if<const NodeStmtElif*>(&node);
+
+    int stack_loc = stmt_if ? emit_expr(std::get<NodeBinaryExpr>((*stmt_if)->cond->m_node))
+                            : emit_expr(std::get<NodeBinaryExpr>((*stmt_elif)->cond->m_node));
+
     m_os << std::format("\tLDR x8, [sp, {}]\n", stack_loc); // for now only int values from expr are evaluated
     m_os << "\tCMP x8, 0\n"; // anything nonzero is true (janky bool)
 
@@ -130,15 +151,12 @@ void CodeGenerator::emit_stmt_if(const NodeStmtIf& node) {
     m_os << std::format("\tB {}\n", label_else);
     m_os << label_branch << ":\n";
 
-    emit(node.scope);
+    stmt_if ? emit((*stmt_if)->scope) : emit((*stmt_elif)->scope);
     m_os << label_else << ":\n";
 }
 
 void CodeGenerator::emit_stmt_else(const NodeStmtElse& node) {
-    const std::string label_else = std::format("label{}", m_lbl_count++);
-    m_os << std::format("\tB {}\n", label_else);
     emit(node.scope);
-    m_os << label_else << ":\n";
 }
 
 int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
@@ -147,7 +165,7 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node) {
     const auto n_atom_lit = std::get_if<NodeIntLiteral>(&node.atom);
 
     if (n_atom_id) {
-        int cached_loc = m_cached_var.at(n_atom_id->name);
+        const int cached_loc = m_cached_var.at(n_atom_id->name);
         return cached_loc;
     }
     if (n_atom_lit) {
@@ -271,7 +289,13 @@ void CodeGenerator::emit(const NodeScope& node) {
             break;
         }
         case NodeType::STMT_IF: {
-            emit_stmt_if(std::get<NodeStmtIf>(stmt.m_node));
+            auto& stmt_if = std::get<NodeStmtIf>(stmt.m_node);
+            emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_if));
+            break;
+        }
+        case NodeType::STMT_ELIF: {
+            auto& stmt_elif = std::get<NodeStmtElif>(stmt.m_node);
+            emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_elif));
             break;
         }
         case NodeType::STMT_ELSE: {

@@ -155,6 +155,8 @@ Token Lexer::classify_token(const std::string &buf) noexcept {
     else if (buf == "exit") { tok.type = TokenType::KW_EXIT; } 
     else if (buf == "let")  { tok.type = TokenType::KW_LET; } 
     else if (buf == "if")   { tok.type = TokenType::KW_IF; }
+    else if (buf == "elif") { tok.type = TokenType::KW_ELIF; }
+    else if (buf == "else") { tok.type = TokenType::KW_ELSE; }
     else if (buf == "(")    { tok.type = TokenType::DELIM_LPAREN; }
     else if (buf == ")")    { tok.type = TokenType::DELIM_RPAREN; }
     else if (buf == "{")    { tok.type = TokenType::DELIM_LCURLY; }
