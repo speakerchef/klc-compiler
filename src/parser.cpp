@@ -292,26 +292,8 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
     NodeStmtExit exit_;
     exit_.loc.line = peek().value().loc.line;
     exit_.loc.col = peek().value().loc.col;
+    exit_.exit_code = parse_expr(false);
 
-    switch (ttype) {
-        case TokenType::VAR_IDENT: {
-            if (!loc_scp.contains(peek().value().value) &&
-                !m_program.main.var_table.contains(peek().value().value)) {
-                std::println(stderr, "[{}:{}] Error: Unknown symbol `{}`",
-                    peek().value().loc.line, peek().value().loc.col,
-                    peek().value().value);
-                exit(EXIT_FAILURE);
-            }
-
-            exit_.exit_code = std::make_unique<SyntaxNode>(NodeIdentifier{
-                .name = std::move(peek().value().value),
-                .loc = { peek().value().loc.line, peek().value().loc.col }
-            });
-            next(); // eat identifier
-            break;
-        }
-        default: { exit_.exit_code = parse_expr(false); }
-    }
     return exit_;
 }
 

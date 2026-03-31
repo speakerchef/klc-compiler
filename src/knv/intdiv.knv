@@ -1,0 +1,5 @@
+mut x = 22;
+mut y = 7;
+mut z = x/y;
+
+exit x / y;
