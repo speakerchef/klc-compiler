@@ -15,7 +15,7 @@ CodeGenerator::CodeGenerator(NodeProgram &&prog) noexcept
     }
     m_os << ".global _main\n.align 4\n_main:\n";
     get_count_vars(m_program.main);
-    std::println("Total num vars = {}", m_var_count);
+    // std::println("Total num vars = {}", m_var_count);
 
     emit(m_program.main);
 }
@@ -109,7 +109,6 @@ void CodeGenerator::emit_epilogue() {
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node) {
     const auto& [kind, ident, value, loc] = node;
     const auto& bin_expr = std::get<NodeBinaryExpr>(value->m_node); // can only be an expr at this moment
-    // bin_expr.print();
 
     if ( m_expand_stack ) {
         size_t incr = m_var_count * 16;
@@ -136,25 +135,21 @@ void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node) {
     //exitcode can ONLY be an INTEGER
     if (const auto n_int_lit = std::get_if<NodeIntLiteral>(&node.exit_code->m_node)) {
         m_os << std::format("\tMOV x0, #{}\n", n_int_lit->value);
-        m_os << "\tMOV x16, #1\n";
-        emit_epilogue();
-        m_os << "\tBL  _exit\n";
-    }
-    if (const auto n_ident = std::get_if<NodeIdentifier>(&node.exit_code->m_node)) {
-        const int32_t stack_loc = m_cached_var.at(n_ident->name);
-        m_os << std::format("\tLDR x0, [sp, {}]\n", stack_loc);
-        m_os << "\tMOV x16, 1\n";
-        emit_epilogue();
-        m_os << "\tBL  _exit\n";
-    }
-    if (const auto n_expr = std::get_if<NodeBinaryExpr>(&node.exit_code->m_node)) {
-        const int64_t stack_pos = emit_expr(*n_expr, nullptr, false);
-        m_os << std::format("\tLDR x0, [sp, {}]\n", stack_pos);
-        m_os << "\tMOV x16, 1\n";
-        emit_epilogue();
-        m_os << "\tBL  _exit\n";
     }
 
+    int32_t stack_pos = 0;
+    if (const auto n_ident = std::get_if<NodeIdentifier>(&node.exit_code->m_node)) {
+        stack_pos = m_cached_var.at(n_ident->name);
+        m_os << std::format("\tLDR x0, [sp, {}]\n", stack_pos);
+    }
+    if (const auto n_expr = std::get_if<NodeBinaryExpr>(&node.exit_code->m_node)) {
+        stack_pos = emit_expr(*n_expr, nullptr, false);
+        m_os << std::format("\tLDR x0, [sp, {}]\n", stack_pos);
+    }
+
+    m_os << "\tMOV x16, 1\n";
+    emit_epilogue();
+    m_os << "\tBL  _exit\n";
 }
 
 void CodeGenerator::emit_conditional(const std::variant<const NodeStmtIf*, const NodeStmtElif*> node,
@@ -164,7 +159,7 @@ void CodeGenerator::emit_conditional(const std::variant<const NodeStmtIf*, const
     const auto stmt_if = std::get_if<const NodeStmtIf*>(&node);
     const auto stmt_elif = std::get_if<const NodeStmtElif*>(&node);
 
-    int stack_loc = stmt_if ? emit_expr(std::get<NodeBinaryExpr>((*stmt_if)->cond->m_node), nullptr  , false)
+    const int32_t stack_loc = stmt_if ? emit_expr(std::get<NodeBinaryExpr>((*stmt_if)->cond->m_node), nullptr  , false)
                             : emit_expr(std::get<NodeBinaryExpr>((*stmt_elif)->cond->m_node), nullptr  , false);
 
     m_os << std::format("\tLDR x8, [sp, {}]\n", stack_loc); // for now only int values from expr are evaluated
@@ -176,15 +171,14 @@ void CodeGenerator::emit_conditional(const std::variant<const NodeStmtIf*, const
         m_os << std::format("\tB {}\n", lbl_else);
         m_os << lbl_if << ":\n";
         emit((*stmt_if)->scope); 
-        m_os << std::format("\tB {}\n", lbl_chain_end);
     }
 
     if (stmt_elif) {
         m_os << std::format("\tB {}\n", lbl_elif);
         m_os << lbl_if << ":\n";
         emit((*stmt_elif)->scope); 
-        m_os << std::format("\tB {}\n", lbl_chain_end);
     }
+    m_os << std::format("\tB {}\n", lbl_chain_end);
 }
 
 void CodeGenerator::emit_stmt_else(const NodeStmtElse& node) {
@@ -220,6 +214,7 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
 
     if ( n_atom_id ) {
         const int cached_loc = m_cached_var.at(n_atom_id->name);
+
         if (fresh_alloc) {
             m_os << std::format("\tLDR x10, [sp, {}]\n", cached_loc);
             m_os << std::format("\tSTR x10, [sp, {}]\n", m_stack_ptr);
@@ -232,20 +227,21 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
 
     if (n_atom_lit) {
         if (n_atom_lit->value >= UINT16_MAX - 1){
-            const uint16_t low = n_atom_lit->value & 0xFFFF;
-            const uint16_t high = n_atom_lit->value >> 16;
+            const uint16_t low = static_cast<uint16_t>(n_atom_lit->value) & 0xFFFF;
+            const uint16_t high = static_cast<uint16_t>(n_atom_lit->value) >> 16;
 
             m_os << std::format("\tMOVZ x8, 0x{:02x}\n", low);
             m_os << std::format("\tMOVK x8, 0x{:02x}, LSL 16\n", high);
-            m_os << "\tSTR x8, [sp, " << m_stack_ptr << "]" << '\n';
+            m_os << std::format("\tSTR x8, [sp, {}]\n", m_stack_ptr);
         }
         else {
-            m_os << "\tMOV x8, " << n_atom_lit->value << '\n';
+            m_os << std::format("\tMOV x8, {}\n", n_atom_lit->value);
             m_os << std::format("\tSTR x8, [sp, {}]\n", m_stack_ptr);
         }
 
         const int32_t storage_loc = m_stack_ptr;
         m_stack_ptr -= 8;
+
         if (!node.lhs && !node.rhs) return storage_loc;
     }
 
@@ -254,7 +250,7 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
     if (node.rhs) rhs_stk_adr = emit_expr(*node.rhs, nullptr, false);
 
     if (lhs_stk_adr == -1 || rhs_stk_adr == -1) {
-        std::println("Bad stack address!");
+        std::println(stderr, "Bad stack address!");
         exit(EXIT_FAILURE);
     }
 
@@ -321,29 +317,37 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
         const std::string lb1 = std::format("label{}", m_lbl_count++);
         const std::string lb2 = std::format("label{}", m_lbl_count++);
         const std::string lb3 = std::format("label{}", m_lbl_count++);
-        m_os << "\tCMP x9, 1\n";
+        
+        // check edge cases
+        m_os << "\tCMP x9, 1\n"; // power is 1
         m_os << "\tB.EQ " << lb3 << "\n";
-        m_os << "\tCMP x9, 0\n";
+        m_os << "\tCMP x9, 0\n"; // power is 0
         m_os << "\tB.EQ " << lb2 << "\n";
+        // else begin loop
         m_os << "\tMOV x10, x9\n";
         m_os << "\tMOV x9, x8\n";
+
         m_os << lb1 << ":\n";
         m_os << "\tMUL x8, x9, x8\n";
         m_os << "\tSUB x10, x10, 1\n";
         m_os << "\tCMP x10, 1\n";
         m_os << "\tB.NE " << lb1 << "\n";
         m_os << "\tB " << lb3 << "\n";
+
         m_os << lb2 << ":\n";
         m_os << "\tMOV x8, 1\n";
         m_os << lb3 << ":\n";
+
         break;
     }
     default: assert(false && "Unknown operator!");
     }
 
     m_os << std::format("\tSTR x8, [sp, {}]\n", cached_adr ? *cached_adr : m_stack_ptr);
-    const int32_t storage_loc = cached_adr ? *cached_adr : m_stack_ptr;
-    if (!cached_adr) m_stack_ptr -= 8;
+
+    const int32_t storage_loc =                 cached_adr ? *cached_adr : m_stack_ptr;
+
+    if (!cached_adr) m_stack_ptr -= 8; // only move ptr if we're declaring a new variable
     return storage_loc;
 
     //==========================================================================
@@ -351,78 +355,84 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
 
 void CodeGenerator::emit(const NodeScope& node) {
 #pragma clang diagnostic ignored "-Wswitch"
+
     for (auto it = node.stmts.begin(); it < node.stmts.end(); ++it) {
+
         switch (it.base()->get()->get_node_type()) {
-        case NodeType::VAR_DECL: {
-            emit_decl(std::get<NodeVarDeclaration>(it.base()->get()->m_node));
-            break;
-        }
-        case NodeType::STMT_EXIT: {
-            emit_stmt_exit(std::get<NodeStmtExit>(it.base()->get()->m_node));
-            break;
-        }
-        case NodeType::STMT_IF: {
-            auto& stmt_if = std::get<NodeStmtIf>(it.base()->get()->m_node);
-            const std::string lbl_if = std::format("label_if{}", m_lbl_count++);
-            const std::string lbl_else = std::format("label_else{}", m_lbl_count++);
-            const std::string lbl_end = std::format("label_end{}", m_lbl_count++);
-
-            emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_if),
-                             lbl_if, 
-                             (++it).base()->get()->get_node_type() ==
-                             NodeType::STMT_ELIF ? std::format("label_elif{}", m_lbl_count)
-                                                 : lbl_else,
-                             "", lbl_end);
-
-            while ((it).base()->get() && it.base()->get()->get_node_type() == NodeType::STMT_ELIF) {
-                auto& stmt_elif = std::get<NodeStmtElif>(it.base()->get()->m_node);
-                m_os << std::format("label_elif{}", m_lbl_count++) << ":\n";
-
-                emit_conditional(std::variant<const NodeStmtIf*, 
-                                 const NodeStmtElif*>(&stmt_elif), 
-                                 std::format("label_branch{}", m_lbl_count++), 
-                                 "", 
-                                 (++it).base()->get()->get_node_type() != NodeType::STMT_ELIF ? lbl_else : std::format("label_elif{}", m_lbl_count), lbl_end);
-            }
-
-            if ((it).base()->get() && it.base()->get()->get_node_type() == NodeType::STMT_ELSE) {
-                m_os << lbl_else << ":\n";
-                emit_stmt_else(std::get<NodeStmtElse>(it.base()->get()->m_node));
-                m_os << std::format("\tB {}\n", lbl_end);
-                m_os << lbl_end << ":\n";
+            case NodeType::VAR_DECL: {
+                emit_decl(std::get<NodeVarDeclaration>(it.base()->get()->m_node));
                 break;
             }
+            case NodeType::STMT_EXIT: {
+                emit_stmt_exit(std::get<NodeStmtExit>(it.base()->get()->m_node));
+                break;
+            }
+            case NodeType::STMT_IF: {
+                auto& stmt_if = std::get<NodeStmtIf>(it.base()->get()->m_node);
+                const std::string lbl_if = std::format("label_if{}", m_lbl_count++);
+                const std::string lbl_else = std::format("label_else{}", m_lbl_count++);
+                const std::string lbl_end = std::format("label_end{}", m_lbl_count++);
 
-            m_os << lbl_else << ":\n";
-            m_os << std::format("\tB {}\n", lbl_end);
-            m_os << lbl_end << ":\n";
-            --it;
+                emit_conditional(std::variant<const NodeStmtIf*, const NodeStmtElif*>(&stmt_if),
+                                lbl_if, 
+                                (++it).base()->get()->get_node_type() ==
+                                NodeType::STMT_ELIF ? std::format("label_elif{}", m_lbl_count)
+                                                    : lbl_else,
+                                "", lbl_end);
 
-            break;
-        }
-        case NodeType::STMT_ELIF: {
-            const auto&[cond, scp, loc] = std::get<NodeStmtElif>(it.base()->get()->m_node);
-            std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement for `elif`.",
-                loc.line, loc.col);
-            exit(EXIT_FAILURE);
-        }
-        case NodeType::STMT_ELSE: {
-            const auto&[scope, loc] = std::get<NodeStmtElse>(it.base()->get()->m_node);
-            std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement for `else`.",
-                loc.line, loc.col);
-            exit(EXIT_FAILURE);
-        }
-        case NodeType::STMT_WHILE: {
-            const std::string lbl_while = std::format("label{}while", m_lbl_count++);
-            const std::string lbl_end = std::format("label_end{}", m_lbl_count++);
-            emit_stmt_while(std::get<NodeStmtWhile>(it.base()->get()->m_node));
-            break;
-        }
-        case NodeType::SCOPE_NODE: {
-            emit(std::get<NodeScope>(it.base()->get()->m_node));
-            break;
-        }
-        default: assert(false && "Unknown node type!");
+                while ((it).base()->get() && it.base()->get()->get_node_type() == NodeType::STMT_ELIF) {
+                    auto& stmt_elif = std::get<NodeStmtElif>(it.base()->get()->m_node);
+
+                    m_os << std::format("label_elif{}", m_lbl_count++) << ":\n";
+
+                    emit_conditional(std::variant<const NodeStmtIf*, 
+                                    const NodeStmtElif*>(&stmt_elif), 
+                                    std::format("label_branch{}", m_lbl_count++), "", 
+                                    (++it).base()->get()->get_node_type() != 
+                                    NodeType::STMT_ELIF ? lbl_else 
+                                                        : std::format("label_elif{}", m_lbl_count), lbl_end);
+                }
+
+                if ((it).base()->get() && it.base()->get()->get_node_type() == NodeType::STMT_ELSE) {
+                    m_os << lbl_else << ":\n";
+
+                    emit_stmt_else(std::get<NodeStmtElse>(it.base()->get()->m_node));
+                    m_os << std::format("\tB {}\n", lbl_end);
+
+                    m_os << lbl_end << ":\n";
+                    break;
+                }
+
+                m_os << lbl_else << ":\n";
+                m_os << std::format("\tB {}\n", lbl_end);
+                m_os << lbl_end << ":\n";
+
+                --it; // reset ptr location
+                break;
+            }
+            case NodeType::STMT_ELIF: {
+                const auto&[cond, scp, loc] = std::get<NodeStmtElif>(it.base()->get()->m_node);
+                std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement for `elif`.",
+                    loc.line, loc.col);
+                exit(EXIT_FAILURE);
+            }
+            case NodeType::STMT_ELSE: {
+                const auto&[scope, loc] = std::get<NodeStmtElse>(it.base()->get()->m_node);
+                std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement for `else`.",
+                    loc.line, loc.col);
+                exit(EXIT_FAILURE);
+            }
+            case NodeType::STMT_WHILE: {
+                const std::string lbl_while = std::format("label{}while", m_lbl_count++);
+                const std::string lbl_end = std::format("label_end{}", m_lbl_count++);
+                emit_stmt_while(std::get<NodeStmtWhile>(it.base()->get()->m_node));
+                break;
+            }
+            case NodeType::SCOPE_NODE: {
+                emit(std::get<NodeScope>(it.base()->get()->m_node));
+                break;
+            }
+            default: assert(false && "Unknown node type!");
         }
     }
 }

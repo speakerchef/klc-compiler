@@ -59,12 +59,19 @@ std::vector<Token> Lexer::tokenize() {
             if (ch == '\n') { line_cnt++, col_cnt = 0; }
         } else if (std::ispunct(ch)) { // Operators & Symbols
             col_cnt++;
+
+            if (ch == '_') {
+                buf.push_back(ch);
+                continue;
+            }
+
             if (!buf.empty()) {
                 m_tokens.emplace_back(classify_token(buf));
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
                 tok_idx++;
                 buf.clear();
             }
+
             // double-char bin ops
             const auto fix_char = [&](const char c1, const char c2) {
                 col_cnt++;
@@ -72,63 +79,71 @@ std::vector<Token> Lexer::tokenize() {
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
                 tok_idx++;
             };
+
             switch (ch) {
-            case '=': {
-                char op; m_ifs.get(op);
-                if (op == ch) {
-                    fix_char(ch, ch);
-                    continue;
+                case '=': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '!': {
-                char op; m_ifs.get(op);
-                if (op == '=') {
-                    fix_char(ch, op);
-                    continue;
+                case '!': {
+                    char op; m_ifs.get(op);
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '>': {
-                char op; m_ifs.get(op);
-                if (op == '=') {
-                    fix_char(ch, op);
-                    continue;
+                case '>': {
+                    char op; m_ifs.get(op);
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '<': {
-                char op; m_ifs.get(op);
-                if (op == '=') {
-                    fix_char(ch, op);
-                    continue;
+                case '<': {
+                    char op; m_ifs.get(op);
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '&': {
-                char op; m_ifs.get(op);
-                if (op == ch) {
-                    fix_char(ch, ch);
-                    continue;
+                case '&': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '|': {
-                char op; m_ifs.get(op);
-                if (op == ch) {
-                    fix_char(ch, ch);
-                    continue;
+                case '|': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
-            case '*': {
-                char op; m_ifs.get(op);
-                if (op == ch) {
-                    fix_char(ch, ch);
-                    continue;
+                case '*': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
                 }
-                m_ifs.unget();
-            }
             }
             std::string o{ch};
             m_tokens.emplace_back(classify_token(o));
@@ -136,9 +151,6 @@ std::vector<Token> Lexer::tokenize() {
             tok_idx++;
         }
     }
-    // for (const Token &tok : m_tokens) {
-    //     std::println("Token value: {}", tok.value);
-    // }
 
     return m_tokens;
 }

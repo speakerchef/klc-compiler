@@ -26,18 +26,15 @@ int main(int argc, char **argv) {
     // Process
     Lexer lexer{ path };
     Parser parser { lexer.tokenize() };
-    // NodeProgram program = ;
-    // const std::string id = std::get<NodeVarDeclaration>(program.main.stmts.at(0).m_node).ident.name;
-    // std::println("STMT ID at [0]: {}", id);
     CodeGenerator gen{ parser.create_program() };
 
     println("Successful Compilation!");
 
-    const char *assemble_cmd = "as -o ../build/gen_asm.o ../build/gen_asm.s";
-    const char *linker_cmd =
-        "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path`"
-        " -o ../build/gen_asm ../build/gen_asm.o";
-    const char *exec_cmd = "../build/gen_asm; echo $?";
+    // const char *assemble_cmd = "as -o ../build/gen_asm.o ../build/gen_asm.s";
+    // const char *linker_cmd =
+    //     "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path`"
+    //     " -o ../build/gen_asm ../build/gen_asm.o";
+    // const char *exec_cmd = "../build/gen_asm; echo $?";
 
     // std::system(assemble_cmd);
     // std::system(linker_cmd);

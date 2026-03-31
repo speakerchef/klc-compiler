@@ -29,7 +29,7 @@ class Parser {
     [[maybe_unused]]    std::optional<Token> next();
     [[nodiscard]]       NodeVarDeclaration parse_declaration(TokenType ttype, 
                                    const NodeScope& loc_scp, bool is_reassign);
-    [[nodiscard]]       std::unique_ptr<SyntaxNode> parse_expr();
+    [[nodiscard]]       std::unique_ptr<SyntaxNode> parse_expr(bool chk_for_paren);
     [[nodiscard]]       std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]       NodeStmtExit parse_stmt_exit(TokenType ttype,
                         const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
@@ -38,6 +38,7 @@ class Parser {
     [[nodiscard]]       NodeStmtElse parse_stmt_else(NodeScope& loc_scp);
     [[nodiscard]]       NodeStmtWhile parse_stmt_while(NodeScope& loc_scp);
     [[nodiscard]]       NodeScope parse_stmt(bool is_prog, NodeScope& loc_scp);
+                        void check_semi() const;
 
 //===================================================================================================
                         friend class ParserTests;

@@ -32,11 +32,18 @@ bool Parser::validate_token(const size_t offset, const TokenType ttype = TokenTy
     if (ttype == TokenType::NIL_ && bop == BinOp::NIL_) {
         assert(false && "Error: You forgot to specify a type to validate_token()");
     }
-    std::string bop_id{};
     if (bop != BinOp::NIL_) {
         return peek(offset).has_value() && (bop == set_op(peek(offset).value().value));
     }
     return (peek(offset).has_value() && peek(offset).value().type == ttype);
+}
+
+void Parser::check_semi() const {
+    if (!validate_token(0, TokenType::DELIM_SEMI)) {
+        std::println(stderr, "[{}:{}] Error: Expected `;`.", 
+                     peek().value().loc.line, peek().value().loc.col);
+        exit(EXIT_FAILURE);
+    }
 }
 
 std::tuple<float, float> Parser::get_binding_power(const BinOp bop) {
@@ -65,6 +72,7 @@ std::tuple<float, float> Parser::get_binding_power(const BinOp bop) {
     case BinOp::ADD:     { return {9, 9.1}; }
     case BinOp::DIV:     [[fallthrough]];
     case BinOp::MUL:     { return {10, 10.1}; }
+
     // Power (right associative)
     case BinOp::PWR:     { return {11, 10.9}; }
 
@@ -94,9 +102,10 @@ BinOp Parser::set_op(const std::string &optype) {
 }
 
 NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
+    #pragma clang diagnostic ignored "-Wswitch"
+
     const NodeScope& loc_scp, const bool is_reassign) {
 
-    #pragma clang diagnostic ignored "-Wswitch"
     if (!validate_token(0, TokenType::VAR_IDENT)) {
         std::println(
             "[{}:{}] Error: Expected identifier after `let`.",
@@ -106,15 +115,12 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
     }
     if (!validate_token(1, TokenType::NIL_, BinOp::EQ)) {
         std::println("[{}:{}] Error: Expected `=` after declaration `{}`",
-            peek().value().loc.line, peek().value().loc.col, peek(0).value().value);
+            peek().value().loc.line, peek().value().loc.col, peek().value().value);
         exit(EXIT_FAILURE);
     }
 
-
     NodeVarDeclaration dec{};
     if (is_reassign) {
-        // const auto it = (loc_scp.var_table.find(peek().value().value));
-        // loc_scp.var_table.erase(it);
         dec.kind = VarType::MUT;
         dec.ident.name = peek().value().value;
         next(); // eat ident
@@ -144,43 +150,41 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
         next(); // eat ident
     }
     next(); // eat `=`
+    dec.value = parse_expr(false);
 
-    std::println("ident: {}", dec.ident.name);
-    dec.value = parse_expr();
+    check_semi();
+
     return dec;
 }
 
-std::unique_ptr<SyntaxNode> Parser::parse_expr() {
-    auto res = std::make_unique<SyntaxNode>(std::move(*parse_expr_impl(0)));
-    // if (!validate_token(0, TokenType::DELIM_SEMI)) {
-    //     std::println("VALU: {}", peek().value().value);
-    //     std::println(stderr, "[{}:{}] Error: Missing `;`.", peek().value().loc.line - 1, // -1 as cur tok is on next line
-    //         peek().value().loc.col);
-    //     exit(EXIT_FAILURE);
-    // }
-    return res;
+std::unique_ptr<SyntaxNode> Parser::parse_expr(const bool chk_for_paren) {
+    if (chk_for_paren){
+        if (!validate_token(0, TokenType::DELIM_LPAREN)) {
+            m_tok_ptr--;
+            std::println(stderr, "[{}:{}] Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return std::make_unique<SyntaxNode>(std::move(*parse_expr_impl(0)));
 }
 
 std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
     #pragma clang diagnostic ignored "-Wswitch"
 
-    if (!peek().has_value()) {
-        std::println(stderr, "Error: Invalid expression.");
-        exit(EXIT_FAILURE);
-    }
-
     auto lhs = std::make_unique<NodeBinaryExpr>();
-    if (peek().value().type == TokenType::DELIM_LPAREN) { // subexpression
-        next(); // eat '('
-        lhs = parse_expr_impl(0);
+    if (peek().value().type == TokenType::DELIM_LPAREN) {
+        next(); // '('
+        lhs = parse_expr_impl(0); // subexpression
+
         if (!validate_token(0, TokenType::DELIM_RPAREN)) {
-            std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
+            std::println(stderr, "[{}:{}] Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
             exit(EXIT_FAILURE);
         }
-        // next(); // eat ')'
     }
+
     if (validate_token(0, TokenType::DELIM_SEMI)) return lhs;
     if (validate_token(1, TokenType::DELIM_LCURLY)) return lhs; // for scopes
+ 
     auto [type, value, loc] = peek().value();
 
     switch (type) {
@@ -202,25 +206,25 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
         }
     }
     next();
-    //NOTE: This checking logic needs improvement
+
     if (!validate_token(0, TokenType::BIN_OP) && !validate_token(0, TokenType::DELIM_SEMI) 
         && !validate_token(0, TokenType::DELIM_RPAREN)){
-        std::println(stderr, "[{}:{}]Error: Invalid binary operator `{}`.", 
-                     peek().value().loc.line,
-                     peek().value().loc.col,
-                     peek().value().value);
+        std::println(stderr, "[{}:{}] Error: Expected binary operator before `{}`.", 
+                     peek().value().loc.line, peek().value().loc.col, peek().value().value);
         exit(EXIT_FAILURE);
     }
 
     while (validate_token(0, TokenType::BIN_OP)) {
         const BinOp op = set_op(peek().value().value);
+
         if (op == BinOp::EQ) {
-            std::println(stderr, "[{}:{}]Error: Operator `=` not allowed in expression.", peek().value().loc.line, 
-                         peek().value().loc.col);
+            std::println(stderr, "[{}:{}] Error: Operator `=` not allowed in expression.", 
+                         peek().value().loc.line, peek().value().loc.col);
         }
         auto [lbp, rbp] = get_binding_power(op);
 
         if (lbp < min_rbp) break;
+
         next();
 
         auto rhs = parse_expr_impl(rbp);
@@ -238,26 +242,13 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
 }
 
 NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
-    if (!peek().has_value()) {
-        std::println(stderr, "Error: Invalid conditional.");
-        exit(EXIT_FAILURE);
-    }
-    if (!validate_token(0, TokenType::DELIM_LPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
-    next();
+    std::unique_ptr<SyntaxNode> cond { parse_expr(true) };
 
-    std::unique_ptr<SyntaxNode> cond { parse_expr() };
-    if (!validate_token(0, TokenType::DELIM_RPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
-        std::println("Token here is: {}", peek(1).value().value);
-        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
+        std::println(stderr, "[{}:{}] Error: .", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
+
     return NodeStmtIf {
         .cond = std::move(cond),
         .scope = parse_stmt(false, loc_scp),
@@ -265,24 +256,11 @@ NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
 }
 
 NodeStmtElif Parser::parse_stmt_elif(NodeScope& loc_scp) {
-    if (!peek().has_value()) {
-        std::println(stderr, "Error: Invalid conditional.");
-        exit(EXIT_FAILURE);
-    }
-    next();
-    if (!validate_token(0, TokenType::DELIM_LPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
+    std::unique_ptr cond { parse_expr(true) };
 
-    std::unique_ptr cond { parse_expr() };
-    if (!validate_token(0, TokenType::DELIM_RPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
         std::println("Token here is: {}", peek(1).value().value);
-        std::println(stderr, "[{}:{}]Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
+        std::println(stderr, "[{}:{}] Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
     return NodeStmtElif {
@@ -319,7 +297,7 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
         case TokenType::VAR_IDENT: {
             if (!loc_scp.contains(peek().value().value) &&
                 !m_program.main.var_table.contains(peek().value().value)) {
-                std::println(stderr, "[{}:{}]Error: Unknown symbol `{}`",
+                std::println(stderr, "[{}:{}] Error: Unknown symbol `{}`",
                     peek().value().loc.line, peek().value().loc.col,
                     peek().value().value);
                 exit(EXIT_FAILURE);
@@ -332,30 +310,16 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
             next(); // eat identifier
             break;
         }
-        default: { exit_.exit_code = parse_expr(); }
+        default: { exit_.exit_code = parse_expr(false); }
     }
     return exit_;
 }
 
 NodeStmtWhile Parser::parse_stmt_while(NodeScope& loc_scp) {
-    if (!peek().has_value()) {
-        std::println(stderr, "Error: Invalid conditional.");
-        exit(EXIT_FAILURE);
-    }
-    if (!validate_token(0, TokenType::DELIM_LPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `(`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
-    next();
+    std::unique_ptr<SyntaxNode> cond { parse_expr(true) };
 
-    std::unique_ptr<SyntaxNode> cond { parse_expr() };
-    if (!validate_token(0, TokenType::DELIM_RPAREN)) {
-        std::println(stderr, "[{}:{}]Error: Missing `)`.", peek().value().loc.line, peek().value().loc.col);
-        exit(EXIT_FAILURE);
-    }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
-        std::println("Token here is: {}", peek(1).value().value);
-        std::println(stderr, "[{}:{}]Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
+        std::println(stderr, "[{}:{}] Error: Invalid conditional.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
     return NodeStmtWhile {
@@ -365,8 +329,7 @@ NodeStmtWhile Parser::parse_stmt_while(NodeScope& loc_scp) {
     };
 }
 
-NodeScope Parser::parse_stmt(const bool is_prog,
-       NodeScope& loc_scp) {
+NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
     NodeScope scope{};
     const auto clause_func = [&] () -> bool {
         return is_prog ? peek().has_value()
@@ -380,102 +343,95 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         next();
 
         switch (peeked.type) {
-        case TokenType::DELIM_LCURLY: { // raw explicit scope
-            auto [stmts, var_table, loc] = parse_stmt(false, scope);
-            // scope.var_table.insert(var_table.begin(), var_table.end());
-            scope.stmts.insert(scope.stmts.end(),
-                std::make_move_iterator(stmts.begin()),
-                std::make_move_iterator(stmts.end()));
-            // std::println("were eating this at scope exit: {}", next().value().value); // eat closing `}`
-            break;
-        }
-        case TokenType::KW_LET:
-        case TokenType::KW_MUT:{
-            auto res = parse_declaration(peeked.type, scope, false);
-            const std::string id_name = res.ident.name;
-            scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
-            if (is_prog) {
-                m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+            case TokenType::DELIM_LCURLY: { // raw explicit scope
+                auto [stmts, var_table, loc] = parse_stmt(false, scope);
+                scope.stmts.insert(scope.stmts.end(),
+                    std::make_move_iterator(stmts.begin()),
+                    std::make_move_iterator(stmts.end()));
                 break;
             }
-            scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
-            break;
-        }
-        case TokenType::VAR_IDENT: {
-            // std::println("Requested reassignment of `{}`", peeked.value);
-            const bool in_loc_scp = scope.var_table.contains(peeked.value);
-            const bool in_glb_scp = m_program.main.var_table.contains(peeked.value);
-
-            if (in_loc_scp || in_glb_scp) {
-                const auto kind = in_loc_scp ? std::get_if<NodeVarDeclaration>(&scope.var_table.at(peeked.value)->m_node)->kind
-                                             : std::get_if<NodeVarDeclaration>(&m_program.main.var_table.at(peeked.value)->m_node)->kind;
-
-                if (kind != VarType::MUT) {
-                    std::println(stderr, "[{}:{}] Error: Cannot reassign variable of type `let`; "
-                                         "Did you mean to use `mut`?",
-                        peeked.loc.line, peeked.loc.col);
-                    exit(EXIT_FAILURE);
-                }
-                m_tok_ptr--;
-
-                auto res = parse_declaration(peeked.type, scope, true);
+            case TokenType::DELIM_RCURLY: {
+                std::println(stderr, "[{}:{}] Error: Extraneous `}}`.", peeked.loc.line, peeked.loc.col);
+                exit(EXIT_FAILURE);
+            }
+            case TokenType::KW_LET: [[fallthrough]];
+            case TokenType::KW_MUT:{
+                auto res = parse_declaration(peeked.type, scope, false);
                 const std::string id_name = res.ident.name;
-
                 scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
-                in_loc_scp ? scope.var_table.insert_or_assign(id_name, scope.stmts.back().get())
-                           : m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+                if (is_prog) {
+                    m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+                    break;
+                }
+                scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
                 break;
             }
-            std::println(stderr, "[{}:{}] Error: Expected identifier.", peeked.loc.line, peeked.loc.col);
-            exit(EXIT_FAILURE);
-        }
-        case TokenType::KW_EXIT: {
-            scope.stmts.emplace_back(
-                std::make_unique<SyntaxNode>(
-                    parse_stmt_exit(peek().value().type, scope.var_table)));
-            break;
-        }
-        case TokenType::KW_IF: {
-            //NOTE: always pass the conditional scope var_table separately in all
-            //cases where scopes are involved
+            case TokenType::VAR_IDENT: {
+                const bool in_loc_scp = scope.var_table.contains(peeked.value);
+                const bool in_glb_scp = m_program.main.var_table.contains(peeked.value);
 
-            auto[cond, scp, loc]  = parse_stmt_if(scope);
-            // scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-            scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtIf(std::move(cond), std::move(scp))));
-            // std::println("NEXTUP IF: {}", next().value().value);
-                next();
+                if (in_loc_scp || in_glb_scp) {
+                    const auto kind = in_loc_scp ? std::get_if<NodeVarDeclaration>(&scope.var_table.at(peeked.value)->m_node)->kind
+                                                : std::get_if<NodeVarDeclaration>(&m_program.main.var_table.at(peeked.value)->m_node)->kind;
 
-            while (validate_token(0, TokenType::KW_ELIF)) {
-                auto[cond, scp, loc]  = parse_stmt_elif(scope);
-                scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElif(std::move(cond), std::move(scp))));
-                // std::println("NEXTUP ELIF: {}", next().value().value);
-                next();
+                    if (kind != VarType::MUT) {
+                        std::println(stderr, "[{}:{}] Error: Cannot reassign variable of type `let`; "
+                                            "Did you mean to use `mut`?",
+                            peeked.loc.line, peeked.loc.col);
+                        exit(EXIT_FAILURE);
+                    }
+                    m_tok_ptr--;
+
+                    auto res = parse_declaration(peeked.type, scope, true);
+                    const std::string id_name = res.ident.name;
+
+                    scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
+
+                    in_loc_scp ? scope.var_table.insert_or_assign(id_name, scope.stmts.back().get())
+                            : m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+
+                    break;
+                }
+                std::println(stderr, "[{}:{}] Error: Expected identifier.", peeked.loc.line, peeked.loc.col);
+                exit(EXIT_FAILURE);
             }
-
-            if (validate_token(0, TokenType::KW_ELSE)) {
-                auto[scp, loc] = parse_stmt_else(scope);
-                scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElse(std::move(scp))));
-                // std::println("NEXTUP ELSE: {}", next().value().value);
-                next();
+            case TokenType::KW_EXIT: {
+                scope.stmts.emplace_back(
+                    std::make_unique<SyntaxNode>(
+                        parse_stmt_exit(peek().value().type, scope.var_table)));
+                break;
             }
-            break;
-        }
-        case TokenType::KW_ELIF: [[fallthrough]];
-        case TokenType::KW_ELSE: {
-            std::println(stderr, "[{}:{}]Error: Expected accompanying `if` statement.",
-                peek().value().loc.line, peek().value().loc.col - 5);
-            exit(EXIT_FAILURE);
-        }
-        case TokenType::KW_WHILE: {
-            auto[cond, scp, loc]  = parse_stmt_while(scope);
-            // scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
-            scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtWhile(std::move(cond), std::move(scp))));
-            next(); // eat `}` from inner scope
-            std::println("This is the current token after innner while: {}", peek().value().value);
-            std::println("This is the next token after innner while: {}", peek(1).value().value);
-        }
+            case TokenType::KW_IF: {
+                auto[cond, scp, loc]  = parse_stmt_if(scope);
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtIf(std::move(cond), std::move(scp))));
+                next(); // }
+
+                while (validate_token(0, TokenType::KW_ELIF)) {
+                    next();
+                    auto[cond, scp, loc]  = parse_stmt_elif(scope);
+                    scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElif(std::move(cond), std::move(scp))));
+                    next(); // }
+                }
+
+                if (validate_token(0, TokenType::KW_ELSE)) {
+                    auto[scp, loc] = parse_stmt_else(scope);
+                    scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElse(std::move(scp))));
+                    next(); // }
+                }
+                break;
+            }
+            case TokenType::KW_ELIF: [[fallthrough]];
+            case TokenType::KW_ELSE: {
+                std::println("Error value: {}", peek().value().value);
+                std::println(stderr, "[{}:{}] Error: Expected accompanying `if` statement.",
+                    peek().value().loc.line, peek().value().loc.col - 5);
+                exit(EXIT_FAILURE);
+            }
+            case TokenType::KW_WHILE: {
+                auto[cond, scp, loc]  = parse_stmt_while(scope);
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtWhile(std::move(cond), std::move(scp))));
+                next(); // `}`
+            }
         }
     }
     return scope;

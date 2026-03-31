@@ -7,7 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(klc
-    ./src/klc-compiler.cpp
+    ./src/main.cpp
     ./src/lexer.cpp
     ./src/parser.cpp
     ./src/syntax-tree.cpp
