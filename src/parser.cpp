@@ -118,8 +118,7 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
         dec.kind = VarType::MUT;
         dec.ident.name = peek().value().value;
         next(); // eat ident
-    }
-    else {
+    } else {
         switch (ttype) {
             case TokenType::KW_LET: {
                 dec.kind = VarType::LET;
@@ -383,7 +382,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         switch (peeked.type) {
         case TokenType::DELIM_LCURLY: { // raw explicit scope
             auto [stmts, var_table, loc] = parse_stmt(false, scope);
-            scope.var_table.insert(var_table.begin(), var_table.end());
+            // scope.var_table.insert(var_table.begin(), var_table.end());
             scope.stmts.insert(scope.stmts.end(),
                 std::make_move_iterator(stmts.begin()),
                 std::make_move_iterator(stmts.end()));
@@ -394,18 +393,26 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         case TokenType::KW_MUT:{
             auto res = parse_declaration(peeked.type, scope, false);
             const std::string id_name = res.ident.name;
-
             scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
+            if (is_prog) {
+                m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+                break;
+            }
             scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
             break;
         }
         case TokenType::VAR_IDENT: {
             // std::println("Requested reassignment of `{}`", peeked.value);
+            const bool in_loc_scp = scope.var_table.contains(peeked.value);
+            const bool in_glb_scp = m_program.main.var_table.contains(peeked.value);
 
-            if (scope.var_table.contains(peeked.value)) {
-                if (std::get<NodeVarDeclaration>(scope.var_table.at(peeked.value)->m_node).kind != VarType::MUT) {
-                    std::println(stderr, "[{}:{}]Error: Cannot reassign variable of type `let`;"
-                                         "\nDid you mean to use `mut`?",
+            if (in_loc_scp || in_glb_scp) {
+                const auto kind = in_loc_scp ? std::get_if<NodeVarDeclaration>(&scope.var_table.at(peeked.value)->m_node)->kind
+                                             : std::get_if<NodeVarDeclaration>(&m_program.main.var_table.at(peeked.value)->m_node)->kind;
+
+                if (kind != VarType::MUT) {
+                    std::println(stderr, "[{}:{}] Error: Cannot reassign variable of type `let`; "
+                                         "Did you mean to use `mut`?",
                         peeked.loc.line, peeked.loc.col);
                     exit(EXIT_FAILURE);
                 }
@@ -415,10 +422,11 @@ NodeScope Parser::parse_stmt(const bool is_prog,
                 const std::string id_name = res.ident.name;
 
                 scope.stmts.emplace_back(std::make_unique<SyntaxNode>(std::move(res)));
-                scope.var_table.insert_or_assign(id_name, scope.stmts.back().get());
+                in_loc_scp ? scope.var_table.insert_or_assign(id_name, scope.stmts.back().get())
+                           : m_program.main.var_table.insert_or_assign(id_name, scope.stmts.back().get());
                 break;
             }
-            std::println(stderr, "[{}:{}]Error: Expected identifier.", peeked.loc.line, peeked.loc.col);
+            std::println(stderr, "[{}:{}] Error: Expected identifier.", peeked.loc.line, peeked.loc.col);
             exit(EXIT_FAILURE);
         }
         case TokenType::KW_EXIT: {
@@ -432,7 +440,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
             //cases where scopes are involved
 
             auto[cond, scp, loc]  = parse_stmt_if(scope);
-            scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
+            // scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
             scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtIf(std::move(cond), std::move(scp))));
             // std::println("NEXTUP IF: {}", next().value().value);
                 next();
@@ -462,7 +470,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
         }
         case TokenType::KW_WHILE: {
             auto[cond, scp, loc]  = parse_stmt_while(scope);
-            scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
+            // scope.var_table.insert(scp.var_table.begin(), scp.var_table.end());
             scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtWhile(std::move(cond), std::move(scp))));
             next(); // eat `}` from inner scope
             std::println("This is the current token after innner while: {}", peek().value().value);
@@ -474,6 +482,7 @@ NodeScope Parser::parse_stmt(const bool is_prog,
 }
 
 NodeProgram&& Parser::create_program() {
-    m_program.main = parse_stmt(true, m_program.main) ;
+    NodeScope empty{};
+    m_program.main = parse_stmt(true, empty);
     return std::move(m_program);
 }

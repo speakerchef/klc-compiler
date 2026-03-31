@@ -341,8 +341,6 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
     default: assert(false && "Unknown operator!");
     }
 
-    std::println("Cached = {}", cached_adr == nullptr);
-    std::println("stack ptr = {}", m_stack_ptr);
     m_os << std::format("\tSTR x8, [sp, {}]\n", cached_adr ? *cached_adr : m_stack_ptr);
     const int32_t storage_loc = cached_adr ? *cached_adr : m_stack_ptr;
     if (!cached_adr) m_stack_ptr -= 8;
@@ -398,6 +396,7 @@ void CodeGenerator::emit(const NodeScope& node) {
             m_os << lbl_else << ":\n";
             m_os << std::format("\tB {}\n", lbl_end);
             m_os << lbl_end << ":\n";
+            --it;
 
             break;
         }
