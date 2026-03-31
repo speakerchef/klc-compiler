@@ -225,9 +225,9 @@ int32_t CodeGenerator::emit_expr(const NodeBinaryExpr& node, const int32_t *cach
     }
 
     if (n_atom_lit) {
-        if (n_atom_lit->value >= UINT16_MAX - 1){
-            const uint16_t low = static_cast<uint16_t>(n_atom_lit->value) & 0xFFFF;
-            const uint16_t high = static_cast<uint16_t>(n_atom_lit->value) >> 16;
+        if (n_atom_lit->value > UINT16_MAX - 1){
+            const auto low = static_cast<uint16_t>(n_atom_lit->value & 0xFFFF);
+            const auto high = static_cast<uint16_t>(n_atom_lit->value >> 16);
 
             m_os << std::format("\tMOVZ x8, 0x{:02x}\n", low);
             m_os << std::format("\tMOVK x8, 0x{:02x}, LSL 16\n", high);
