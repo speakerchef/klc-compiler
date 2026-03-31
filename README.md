@@ -14,7 +14,7 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 ```
 
 - **Lexer/Tokenizer** — tokenizes `.knv` source into a stream of typed tokens
-- **Parser** — Pratt parser with precedence climbing for expressions, producing an AST.
+- **Parser** — Pratt-Parsing with precedence climbing for binary expressions and Recursive-Descent parsing for the rest, producing an AST.
 - **Codegen** — Currently direct AST emission to assembly targeting AArch64 (Apple Silicon / macOS Darwin ABI). (x86_64 support in the future). No LLVM IR or other backends/deps.
 
 ---
@@ -30,7 +30,7 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 | `let`   | Const-defaulted variable declaration |
 | `mut`   | Mutable variable declaration |
 | `exit`  | Exit with an exit code |
-| `if`    | Conditional entry |
+| `if`    | Conditional branch |
 | `elif`  | Alternate branch |
 | `else`  | Fallback branch |
 | `while` | Loop while condition true |
@@ -39,11 +39,12 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 
 | Category | Operators | Notes |
 |----------|-----------|-------|
-| Arithmetic | `+` `-` `*` `/` | Standard integer arithmetic (fp later)|
+| Arithmetic | `+` `-` `*` `/` `%`| Standard integer arithmetic (fp later)|
 | Power | `**` | Right associative, eg. 2**3 = 8 |
 | Comparison | `==` `!=` `<` `>` `<=` `>=` | 1 or 0 |
 | Logical | `&&` `\|\|` | Boolean logic on truthy/falsy values |
 | Bitwise | `&` `\|` `^` | AND, OR, XOR |
+| Bit Shift | `<<` `>>` | LSL, LSR |
 
 ### Other Features
 
@@ -59,9 +60,8 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 - KLC currently emits raw, AArch64 assembly code with zero optimization passes or heuristic-based register allocation methods. Even so, KLC is competitive with C using Clang `-O0` while being multiple orders of magnitudes faster than Python (low hanging fruit but I don't care lol). 
 Run the benchmark below as a test!
 
-### Example syntax and benchmark for `KLC`. Try to run this! `echo $?` after should give you 153 :D
+### Example syntax and benchmark for `KLC`. 
 > Benchmark: 50,000 iterations of popcount, Collatz sequence, GCD, Fibonacci, primality testing, and hash accumulation combined.
-
 #### Results: (M4 Pro MacBook Pro)
 |Lang / Compiler | Time | Magnitude |
 |----------|------|-----------|
@@ -69,6 +69,8 @@ Run the benchmark below as a test!
 | C (Clang) | 0.64s | ~2.5x Faster |
 | Python3 | 52.70s | ~32.3x Slower! |
 > This benchmark code is a showcase of all currently available features in `KLC`.
+
+#### Try to run this! `echo $?` after should give you 153 :D
 ```
 mut hash = 1;
 mut outer = 0;
