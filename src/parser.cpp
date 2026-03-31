@@ -68,13 +68,17 @@ std::tuple<float, float> Parser::get_binding_power(const BinOp bop) {
     case BinOp::LTE:     [[fallthrough]];
     case BinOp::GTE:     { return {8, 8.1}; }
 
+    case BinOp::LSL:     [[fallthrough]];
+    case BinOp::LSR:     { return {9, 9.1}; }
+
     case BinOp::SUB:     [[fallthrough]];
-    case BinOp::ADD:     { return {9, 9.1}; }
+    case BinOp::ADD:     { return {10, 10.1}; }
+    case BinOp::MOD:     [[fallthrough]];
     case BinOp::DIV:     [[fallthrough]];
-    case BinOp::MUL:     { return {10, 10.1}; }
+    case BinOp::MUL:     { return {11, 11.1}; }
 
     // Power (right associative)
-    case BinOp::PWR:     { return {11, 10.9}; }
+    case BinOp::PWR:     { return {12, 11.9}; }
 
     default: assert(false && "Error: Unknown BinOp; Cannot get binding power.");
     }
@@ -84,11 +88,14 @@ BinOp Parser::set_op(const std::string &optype) {
     if (optype == "+")  { return BinOp::ADD; }
     if (optype == "-")  { return BinOp::SUB; }
     if (optype == "*")  { return BinOp::MUL; }
-    if (optype == "**") { return BinOp::PWR; }
     if (optype == "/")  { return BinOp::DIV; }
+    if (optype == "%")  { return BinOp::MOD; }
+    if (optype == "**") { return BinOp::PWR; }
     if (optype == "=")  { return BinOp::EQ; }
     if (optype == "<")  { return BinOp::LT; }
     if (optype == ">")  { return BinOp::GT; }
+    if (optype == "<<") { return BinOp::LSL; }
+    if (optype == ">>") { return BinOp::LSR; }
     if (optype == "<=") { return BinOp::LTE; }
     if (optype == ">=") { return BinOp::GTE; }
     if (optype == "==") { return BinOp::EQUIV; }

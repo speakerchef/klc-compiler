@@ -105,12 +105,20 @@ std::vector<Token> Lexer::tokenize() {
                         fix_char(ch, op);
                         continue;
                     }
+                    if (op == '>') {
+                        fix_char(ch, op);
+                        continue;
+                    }
                     m_ifs.unget();
                     break;
                 }
                 case '<': {
                     char op; m_ifs.get(op);
                     if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    if (op == '<') {
                         fix_char(ch, op);
                         continue;
                     }
@@ -160,7 +168,7 @@ Token Lexer::classify_token(const std::string &buf) noexcept {
     Token tok{};
 
     if (buf.find_first_not_of("0123456789"))   { tok.type = TokenType::LIT_INT; }
-    else if (buf.find_first_not_of("+-*/<>=|&^!"))    { tok.type = TokenType::BIN_OP; }
+    else if (buf.find_first_not_of("+-*/<>=|&^!%"))    { tok.type = TokenType::BIN_OP; }
 
     else if (buf == ";")        { tok.type = TokenType::DELIM_SEMI; } 
     else if (buf == "exit")     { tok.type = TokenType::KW_EXIT; } 

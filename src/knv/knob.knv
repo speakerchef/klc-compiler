@@ -59,7 +59,7 @@ while (outer < 50000) {
     mut pc = outer + 2;
     mut ip = 1;
     mut dv = 2;
-    while dv < pc / 2 + 1) {
+    while (dv < pc / 2 + 1) {
         if (pc - (pc / dv) * dv == 0) {
             ip = 0;
         }

@@ -10,8 +10,8 @@ enum class Marker{
 
 class CodeGenerator {
   public:
-     explicit CodeGenerator(NodeProgram&& prog) noexcept;
-    ~CodeGenerator();
+     explicit CodeGenerator(NodeProgram&& prog, const std::string& exec_name) noexcept;
+    ~CodeGenerator() = default;
 
     void emit(const NodeScope& node);
 

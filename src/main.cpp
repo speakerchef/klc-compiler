@@ -3,20 +3,21 @@
 #include "parser.hpp"
 #include "include/utils.hpp"
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <print>
-
-using std::println;
-using std::string;
+#include <sys/wait.h>
 
 int main(int argc, char **argv) {
-    if (argc < 2 || argc > 3) {
+    if (argc < 3) {
         println(stderr, ERR_ARGS);
         return EXIT_FAILURE;
     }
 
-    string path = argv[1];
+    const std::string path = argv[1];
+    const std::string exec_name = argv[2];
 
     if (std::ifstream file(path); !file.is_open()) {
         println(stderr, ERR_FILE);
@@ -24,19 +25,25 @@ int main(int argc, char **argv) {
     }
 
     // Process
+    std::println("Tokenizing...");
     Lexer lexer{ path };
+    std::println("Parsing...");
     Parser parser { lexer.tokenize() };
-    CodeGenerator gen{ parser.create_program() };
+    std::println("Generating...");
+    CodeGenerator gen{ parser.create_program(), exec_name };
 
-    println("Successful Compilation!");
+    const string assemble_cmd = std::format("clang -c -g -Wno-missing-sysroot -o a.o ./{}.s"
+    " && ld -lSystem -syslibroot `xcrun --sdk macosx --show-sdk-path` -o {} ./a.o", exec_name, exec_name);
 
-    // const char *assemble_cmd = "as -o ../build/gen_asm.o ../build/gen_asm.s";
-    // const char *linker_cmd =
-    //     "ld -lSystem -syslibroot `xcrun -sdk macosx --show-sdk-path`"
-    //     " -o ../build/gen_asm ../build/gen_asm.o";
-    // const char *exec_cmd = "../build/gen_asm; echo $?";
+    const int ecode = (std::system(assemble_cmd.c_str()));
+    if (ecode) {
+        std::println(stderr, "Error: Could not compile!"); 
+        return ecode;
+    }
+    std::filesystem::remove("./a.o");
+    std::println("Successful Compilation!");
+    std::println("Generated assembly at {}/{}.s", std::filesystem::current_path().string(), exec_name);
+    std::println("Executable at {}/{}", std::filesystem::current_path().string(), exec_name);
 
-    // std::system(assemble_cmd);
-    // std::system(linker_cmd);
-    // std::system(exec_cmd);
+    return 0;
 }

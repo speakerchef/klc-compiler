@@ -28,5 +28,5 @@ template <typename T> inline void print_variant(T &val) {
 
 // Constants
 constexpr std::string_view
-    ERR_ARGS("Error: Please supply arguments: klc <FILE.knv>");
+    ERR_ARGS("Error: Please supply arguments: klc <FILE.knv> <EXEC-NAME>");
 constexpr std::string_view ERR_FILE("Error: Could not open file.");

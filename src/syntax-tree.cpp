@@ -29,6 +29,7 @@ std::string NodeBinaryExpr::op_to_string(const BinOp bop) {
     case BinOp::SUB:     return "-";
     case BinOp::MUL:     return "*";
     case BinOp::DIV:     return "/";
+    case BinOp::MOD:     return "%";
     case BinOp::PWR:     return "**";
     case BinOp::EQ:      return "=";
     case BinOp::EQUIV:   return "==";
@@ -37,6 +38,8 @@ std::string NodeBinaryExpr::op_to_string(const BinOp bop) {
     case BinOp::GTE:     return ">=";
     case BinOp::LT:      return "<";
     case BinOp::GT:      return ">";
+    case BinOp::LSL:     return "<<";
+    case BinOp::LSR:     return ">>";
     case BinOp::BW_OR:   return "|";
     case BinOp::BW_AND:  return "&";
     case BinOp::BW_XOR:  return "^";

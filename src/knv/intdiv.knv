@@ -1,5 +1,9 @@
-mut x = 22;
-mut y = 7;
-mut z = x/y;
+let scale = 1000000;
+let termone = scale / 5;
+let termtwo = scale / 239;
+mut atanone = 0;
+mut counter = 0;
 
-exit x / y;
+while (termone > 0) {
+    if (counter )
+}

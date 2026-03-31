@@ -35,10 +35,8 @@ static int run_program(const std::string &source) {
   auto src_path = write_temp_file(source);
 
   Lexer lex(src_path);
-  {
     Parser parser(lex.tokenize());
-    CodeGenerator gen(std::move(parser.create_program()));
-  }
+    CodeGenerator gen(std::move(parser.create_program()), "testgen.s");
 
   int asm_result = std::system(
       "xcrun clang -arch arm64 -o /tmp/klc_test_bin ./gen_asm.s 2>/dev/null");

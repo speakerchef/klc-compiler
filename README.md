@@ -152,29 +152,33 @@ exit hash & 255;
 
 ---
 
-## Build & Run
+## Build & Generate Executable
 
 > **Requires:** CMake, Clang/GCC with C++23 support, AArch64 target (Apple Silicon Mac)
 
 ```bash
 # Build the compiler
 cmake -S . -B build/
-cmake --build ./build
+cd build
+cmake --build .
 
-# Compile a .knv file to assembly
-./build/klc <FILE.knv>
+# Optional: Alias to use `klc` anywhere on your system
+alias klc='path/to/klc-compiler/build/klc'
+
+# Generate assembly and executable (MacOS Only for now)
+./klc <FILE.knv> <EXEC-NAME> 
+
+# Or if aliased:
+klc <FILE.knv> <EXEC-NAME>
 ```
 
-### Assemble & Link the output
+### Execute
 
 ```bash
-# Note that the command below is MacOS specific
-cd build/
-clang -c -g -o a.o gen_asm.s \
-  && ld -lSystem -syslibroot $(xcrun -sdk macosx --show-sdk-path) -e _main -o out a.o \
+./executable
 
-# Benchmark
-time ./out
+# Or benchmark
+time ./executable
 
 # Check exit code
 echo $?
@@ -187,7 +191,8 @@ echo $?
 - [ ] String literals
 - [ ] Functions
 - [ ] Floating point support (Harder than you think)
+- [ ] Standard library functions like print()
 - [ ] Loop optimizations
 - [ ] Register allocation pass
-- [ ] x86_64 backend
+- [ ] x86_64 generation
 - [ ] ...and many more!
