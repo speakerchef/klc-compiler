@@ -1,6 +1,6 @@
 # KLC: KNOB-Lang-Compiler
 
-A from scratch compiler for **KNOB** (**K**ompiled **NOB**) — a statically typed, semicolon delimited language that I'm creating that compiles down to AArch64 assembly.
+A from scratch compiler for **KNOB** (**K**ompiled **NOB**) — a statically typed, semicolon delimited language that I'm creating that compiles down to AArch64 assembly: Uses `.knv` as the file extension.
 
 > *Why `.knv` and not `.knb`?*
 > Everyone knows the true perfect language prioritizes ergonomics over sensible standards. `v` is easier to hit from the home row than `b`. You're welcome.
@@ -15,15 +15,13 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 
 - **Lexer/Tokenizer** — tokenizes `.knv` source into a stream of typed tokens
 - **Parser** — Pratt parser with precedence climbing for expressions, producing an AST.
-- **Codegen** — Currently direct AST emission to assembly targeting AArch64 (Apple Silicon / macOS Darwin ABI). (x86_64 support in the future).
-
-No LLVM IR or other backends/deps.
+- **Codegen** — Currently direct AST emission to assembly targeting AArch64 (Apple Silicon / macOS Darwin ABI). (x86_64 support in the future). No LLVM IR or other backends/deps.
 
 ---
 
 ## Language features
 
-KNOB is a fun project of mine still under active construction.
+>KNOB is a fun project of mine still under active construction.
 
 ### Keywords (so far)
 
@@ -35,6 +33,7 @@ KNOB is a fun project of mine still under active construction.
 | `if`    | Conditional entry |
 | `elif`  | Alternate branch |
 | `else`  | Fallback branch |
+| `while` | Loop while condition true |
 
 ### Operators (so far)
 
@@ -53,38 +52,102 @@ KNOB is a fun project of mine still under active construction.
 - Variables from outer scopes are visible in inner scopes
 - Local variables are inaccessible outside their scope
 - Nested if/elif/else with arbitrary depth
+- While loops with mutable state
 
-### Example syntax for `.knv`. Try to run this! `echo $?` should give you 13 :D
+### Performance
 
+- KLC currently emits raw, AArch64 assembly code with zero optimization passes or heuristic-based register allocation methods. Even so, KLC is competitive with C using Clang `-O0` while being multiple orders of magnitudes faster than Python (low hanging fruit but I don't care lol). 
+Run the benchmark below as a test!
+
+### Example syntax and benchmark for `KLC`. Try to run this! `echo $?` after should give you 153 :D
+> Benchmark: 50,000 iterations of popcount, Collatz sequence, GCD, Fibonacci, primality testing, and hash accumulation combined.
+
+#### Results: (M4 Pro MacBook Pro)
+|Lang / Compiler | Time | Magnitude |
+|----------|------|-----------|
+| KNOB (KLC) | 1.63s | - |
+| C (Clang) | 0.64s | ~2.5x Faster |
+| Python3 | 52.70s | ~32.3x Slower! |
+> This benchmark code is a showcase of all currently available features in `KLC`.
 ```
-let a = 2 ** 4;
-let b = (a - 1) * 3;
-let c = b / 9;
-let d = a ^ c;
-let e = (d & 7) | 4;
-let f = a > c;
-let g = c == 5;
-if (f && g) {
-    let h = (a + b + c) / 4;
-    if ((h > 10) && (e != 0)) {
-        let k = a - c;
-        let l = k ** 2;
-        if (l > 100) {
-            let m = (l / 11) ^ (e + 1);
-            let n = m & 15;
-            let o = n > 0;
-            let p = l != 121;
-            if (o && p) {
-                exit n;
-            } else {
-                exit m;
-            }
+mut hash = 1;
+mut outer = 0;
+
+while (outer < 50000) {
+    mut x = outer;
+    mut bits = 0;
+
+    while (x > 0) {
+        if (x & 1) {
+            bits = bits + 1;
         }
-        exit l;
+        x = x / 2;
     }
-    exit h;
+
+    if (bits > 8) {
+        hash = (hash * 31 + outer) & 16777215;
+    } elif (bits > 4) {
+        hash = (hash ^ outer) & 16777215;
+    } else {
+        hash = (hash + bits * 7) & 16777215;
+    }
+
+    mut collatz = outer + 1;
+    mut steps = 0;
+    while (collatz != 1) {
+        mut r = collatz & 1;
+        if (r == 1) {
+            collatz = collatz * 3 + 1;
+        } else {
+            collatz = collatz / 2;
+        }
+        steps = steps + 1;
+    }
+
+    hash = (hash + steps) & 16777215;
+
+    mut ga = outer + 17;
+    mut gb = outer + 31;
+    while (gb != 0) {
+        mut temp = gb;
+        gb = ga - (ga / gb) * gb;
+        ga = temp;
+    }
+
+    hash = (hash ^ ga) & 16777215;
+
+    mut fa = 1;
+    mut fb = 1;
+    mut fi = 0;
+    while (fi < 20) {
+        mut temp = fa + fb;
+        fa = fb;
+        fb = temp;
+        fi = fi + 1;
+    }
+
+    hash = (hash + fb) & 16777215;
+
+    mut pc = outer + 2;
+    mut ip = 1;
+    mut dv = 2;
+    while (dv < pc / 2 + 1) {
+        if (pc - (pc / dv) * dv == 0) {
+            ip = 0;
+        }
+        dv = dv + 1;
+    }
+
+    if (ip) {
+        hash = (hash * 37 + pc) & 16777215;
+    } else {
+        hash = (hash + pc) & 16777215;
+    }
+
+    outer = outer + 1;
 }
-exit 0;
+
+exit hash & 255;
 ```
 
 ---
@@ -105,10 +168,13 @@ cmake --build ./build
 ### Assemble & Link the output
 
 ```bash
+# Note that the command below is MacOS specific
 cd build/
 clang -c -g -o a.o gen_asm.s \
   && ld -lSystem -syslibroot $(xcrun -sdk macosx --show-sdk-path) -e _main -o out a.o \
-  && ./out
+
+# Benchmark
+time ./out
 
 # Check exit code
 echo $?
@@ -118,10 +184,9 @@ echo $?
 
 ## Roadmap
 
-- [ ] For/While loops
-- [ ] Variable reassignment
-- [ ] Functions with
-- [ ] String literals + syscall `write`
+- [ ] String literals
+- [ ] Functions
+- [ ] Floating point support (Harder than you think)
 - [ ] Loop optimizations
 - [ ] Register allocation pass
 - [ ] x86_64 backend
