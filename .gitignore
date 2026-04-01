@@ -1,3 +1,4 @@
+.DS_Store
 .cache
 .clang-format
 .clang-tidy
@@ -5,6 +6,6 @@ build/
 sandbox/*
 !sandbox/*.s
 !sandbox/*.asm
-.DS_Store
+planning/ROADMAP.md
 .idea/
 cmake-build-debug/

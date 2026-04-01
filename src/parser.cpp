@@ -249,6 +249,7 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
 }
 
 NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
+    const auto loc = peek().value().loc;
     std::unique_ptr<SyntaxNode> cond { parse_expr(true) };
 
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
@@ -259,33 +260,66 @@ NodeStmtIf Parser::parse_stmt_if(NodeScope& loc_scp) {
     return NodeStmtIf {
         .cond = std::move(cond),
         .scope = parse_stmt(false, loc_scp),
+        .n_elif = parse_stmt_elif(loc_scp),
+        .n_else = parse_stmt_else(loc_scp),
+        .loc = loc
     };
 }
 
-NodeStmtElif Parser::parse_stmt_elif(NodeScope& loc_scp) {
-    std::unique_ptr cond { parse_expr(true) };
+std::vector<NodeStmtElif> Parser::parse_stmt_elif(NodeScope& loc_scp) {
+    std::vector<NodeStmtElif> elif_vec{};
+    if (!validate_token(1, TokenType::KW_ELIF)) { return elif_vec; }
 
+    next(); // eat '}'
+    while (validate_token(0, TokenType::KW_ELIF)) {
+        NodeStmtElif elif {};
+        const auto loc = next().value().loc; // eat 'elif'
+
+        elif.cond = parse_expr(true);
+        if (!validate_token(1, TokenType::DELIM_LCURLY)) {
+            std::println("Token here is: {}", peek(1).value().value);
+            std::println(stderr, "[{}:{}] Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
+            exit(EXIT_FAILURE);
+        }
+
+        elif.scope = parse_stmt(false, loc_scp);
+        elif.loc = loc;
+        elif_vec.emplace_back(std::move(elif));
+
+        if (!validate_token(0, TokenType::DELIM_RCURLY)) {
+            std::println(stderr, "[{}:{}] Error: Missing `}}`.", peek().value().loc.line,
+                peek().value().loc.col);
+            exit(EXIT_FAILURE);
+        }
+        next(); // eat '}'
+    }
+
+    m_tok_ptr--; // allow for else check
+    return elif_vec;
+}
+
+std::optional<NodeStmtElse> Parser::parse_stmt_else(NodeScope& loc_scp) {
+    next(); // eat '}' from prev scope
+
+    if (!validate_token(0, TokenType::KW_ELSE)) { return std::nullopt; }
     if (!validate_token(1, TokenType::DELIM_LCURLY)) {
         std::println("Token here is: {}", peek(1).value().value);
         std::println(stderr, "[{}:{}] Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
-    return NodeStmtElif {
-        .cond = std::move(cond),
-        .scope = parse_stmt(false, loc_scp),
-        .loc = peek().value().loc,
-    };
-}
 
-NodeStmtElse Parser::parse_stmt_else(NodeScope& loc_scp) {
-    if (!peek().has_value()) {
-        std::println(stderr, "Error: Invalid conditional.");
+    const auto loc = next().value().loc; // eat `else`
+    NodeScope else_scp = parse_stmt(false, loc_scp);
+
+    if (!validate_token(0, TokenType::DELIM_RCURLY)) {
+        std::println(stderr, "[{}:{}] Error: Missing `}}`.", peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
-    next(); // eat `else`
+    next(); // '}'
+
     return NodeStmtElse {
-        .scope = parse_stmt(false, loc_scp),
-        .loc = peek().value().loc,
+        .scope = std::move(else_scp),
+        .loc = loc,
     };
 }
 
@@ -391,22 +425,7 @@ NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
                 break;
             }
             case TokenType::KW_IF: {
-                auto[cond, scp, loc]  = parse_stmt_if(scope);
-                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtIf(std::move(cond), std::move(scp))));
-                next(); // }
-
-                while (validate_token(0, TokenType::KW_ELIF)) {
-                    next();
-                    auto[cond, scp, loc]  = parse_stmt_elif(scope);
-                    scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElif(std::move(cond), std::move(scp))));
-                    next(); // }
-                }
-
-                if (validate_token(0, TokenType::KW_ELSE)) {
-                    auto[scp, loc] = parse_stmt_else(scope);
-                    scope.stmts.emplace_back(std::make_unique<SyntaxNode>(NodeStmtElse(std::move(scp))));
-                    next(); // }
-                }
+                scope.stmts.emplace_back(std::make_unique<SyntaxNode>(parse_stmt_if(scope)));
                 break;
             }
             case TokenType::KW_ELIF: [[fallthrough]];

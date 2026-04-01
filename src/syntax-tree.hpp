@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
-#include <print>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -55,6 +54,7 @@ enum class NodeType {
     STMT_ELIF,
     STMT_WHILE,
     STMT_FOR,
+    STMT_FN,
 };
 
 enum class VarType {
@@ -69,7 +69,7 @@ struct NodeIdentifier {
 };
 
 struct NodeIntLiteral {
-    int value;
+    int64_t value;
     LocData loc;
 };
 
@@ -80,9 +80,8 @@ struct NodeBinaryExpr { // eg. a + b or 4 * 5
     std::unique_ptr<NodeBinaryExpr> rhs;
     size_t var_count;
     LocData loc;
-    void print() const; // print expr in prefix notation eg. (+ 5 8) === 5 + 8
 
-private:
+    void print() const; // print expr in prefix notation eg. (+ 5 8) === 5 + 8
     [[nodiscard]] static std::string op_to_string(BinOp bop);
 };
 
@@ -100,6 +99,12 @@ struct NodeVarDeclaration {
     LocData loc;
 };
 
+struct NodeFunc {
+    NodeIdentifier ident;
+    std::vector<std::unique_ptr<SyntaxNode>> args;
+    LocData loc;
+};
+
 struct NodeStmtExit {
     std::unique_ptr<SyntaxNode> exit_code;
     LocData loc;
@@ -108,12 +113,6 @@ struct NodeStmtExit {
 struct NodeScope {
     std::vector<std::unique_ptr<SyntaxNode>> stmts;
     std::unordered_map<std::string, SyntaxNode*> var_table;
-    LocData loc;
-};
-
-struct NodeStmtIf {
-    std::unique_ptr<SyntaxNode> cond;
-    NodeScope scope;
     LocData loc;
 };
 
@@ -128,13 +127,15 @@ struct NodeStmtElse {
     LocData loc;
 };
 
-struct NodeStmtWhile {
+struct NodeStmtIf {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
+    std::vector<NodeStmtElif> n_elif;
+    std::optional<NodeStmtElse> n_else;
     LocData loc;
 };
 
-struct NodeStmtFor {
+struct NodeStmtWhile {
     std::unique_ptr<SyntaxNode> cond;
     NodeScope scope;
     LocData loc;
@@ -148,7 +149,8 @@ struct SyntaxNode {
   public:
     std::variant<NodeScope, NodeBinaryExpr, NodeUnaryExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif, NodeStmtWhile> m_node;
+                 NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif, 
+                 NodeStmtWhile, NodeFunc> m_node;
     
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;

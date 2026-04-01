@@ -18,7 +18,7 @@ NodeType SyntaxNode::get_node_type() const {
         [](const NodeStmtElif&)                        { return NodeType::STMT_ELIF; },
         [](const NodeStmtElse&)                        { return NodeType::STMT_ELSE; },
         [](const NodeStmtWhile&)                       { return NodeType::STMT_WHILE; },
-        [](const NodeStmtFor&)                         { return NodeType::STMT_FOR; },
+        [](const NodeFunc&)                            { return NodeType::STMT_FN; },
     };
     return std::visit(node_typer, m_node);
 }

@@ -34,8 +34,8 @@ class Parser {
     [[nodiscard]]       NodeStmtExit parse_stmt_exit(TokenType ttype,
                         const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
     [[nodiscard]]       NodeStmtIf parse_stmt_if(NodeScope& loc_scp);
-    [[nodiscard]]       NodeStmtElif parse_stmt_elif(NodeScope& loc_scp);
-    [[nodiscard]]       NodeStmtElse parse_stmt_else(NodeScope& loc_scp);
+    [[nodiscard]]       std::vector<NodeStmtElif> parse_stmt_elif(NodeScope& loc_scp);
+    [[nodiscard]]       std::optional<NodeStmtElse> parse_stmt_else(NodeScope& loc_scp);
     [[nodiscard]]       NodeStmtWhile parse_stmt_while(NodeScope& loc_scp);
     [[nodiscard]]       NodeScope parse_stmt(bool is_prog, NodeScope& loc_scp);
                         void check_semi() const;

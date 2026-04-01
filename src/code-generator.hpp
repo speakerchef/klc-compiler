@@ -32,14 +32,13 @@ class CodeGenerator {
     [[nodiscard]]            const SyntaxNode* peek(size_t offset) const;
     [[maybe_unused]]         const SyntaxNode* next();
     [[nodiscard]]            int32_t emit_expr(const NodeBinaryExpr& node, const int *cached_adr, bool fresh_alloc);
+                             void emit_op(BinOp op);
+                             void emit_store_literal(int64_t val);
                              void get_count_vars(const NodeScope& node);
                              void emit_stmt_exit(const NodeStmtExit& node);
-                             void emit_conditional(std::variant<const NodeStmtIf*, 
-                                                   const NodeStmtElif*> node, 
-                                                   const std::string& lbl_if, 
-                                                   const std::string& lbl_else,
-                                                   const std::string& lbl_elif,
-                                                   const std::string& lbl_chain_end);
+                             void emit_stmt_if(const NodeStmtIf& node, const std::string& lbl_if,
+                                                                     const std::string& lbl_else,
+                                                                     const std::string& lbl_end);
                              void emit_stmt_else(const NodeStmtElse& node);
                              void emit_stmt_while(const NodeStmtWhile& node);
                              void emit_decl(const NodeVarDeclaration& node);
