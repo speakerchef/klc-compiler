@@ -1,9 +1,0 @@
-let scale = 1000000;
-let termone = scale / 5;
-let termtwo = scale / 239;
-mut atanone = 0;
-mut counter = 0;
-
-while (termone > 0) {
-    if (counter )
-}
