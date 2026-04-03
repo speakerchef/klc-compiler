@@ -1,11 +1,18 @@
+# Project & IDE
 .DS_Store
 .cache
 .clang-format
 .clang-tidy
-build/
+.idea/
+
+# Sandbox testing and rough plans
 sandbox/*
 !sandbox/*.s
 !sandbox/*.asm
 planning/ROADMAP.md
-.idea/
+
+# Build outputs
+src/knv/*
+!src/knv/*.knv
+build/
 cmake-build-debug/

@@ -28,11 +28,11 @@ std::optional<Token> Parser::peek(const size_t offset = 0) const {
     return m_tokens.at(m_tok_ptr + offset);
 }
 
-bool Parser::validate_token(const size_t offset, const TokenType ttype = TokenType::NIL_, const BinOp bop = BinOp::NIL_) const {
-    if (ttype == TokenType::NIL_ && bop == BinOp::NIL_) {
+bool Parser::validate_token(const size_t offset, const TokenType ttype = TokenType::NIL_, const Op bop = Op::NIL_) const {
+    if (ttype == TokenType::NIL_ && bop == Op::NIL_) {
         assert(false && "Error: You forgot to specify a type to validate_token()");
     }
-    if (bop != BinOp::NIL_) {
+    if (bop != Op::NIL_) {
         return peek(offset).has_value() && (bop == set_op(peek(offset).value().value));
     }
     return (peek(offset).has_value() && peek(offset).value().type == ttype);
@@ -40,89 +40,170 @@ bool Parser::validate_token(const size_t offset, const TokenType ttype = TokenTy
 
 void Parser::check_semi() const {
     if (!validate_token(0, TokenType::DELIM_SEMI)) {
-        std::println(stderr, "[{}:{}] Error: Expected `;`.", 
+        std::println(stderr, "[{}:{}] Error: Expected `;`.",
                      peek().value().loc.line, peek().value().loc.col);
         exit(EXIT_FAILURE);
     }
 }
 
-std::tuple<float, float> Parser::get_binding_power(const BinOp bop) {
-    switch (bop) {
+std::tuple<float, float> Parser::get_infix_bpower(const Op op) {
+    switch (op) {
     // Assignment (right associative)
-    case BinOp::EQ:      { return {1, 0.9}; }
+    case Op::EQ:      { return {1, 0.9}; }
 
     //logical
-    case BinOp::LG_OR:   { return {2, 2.1}; }
-    case BinOp::LG_AND:  { return {3, 3.1}; }
+    case Op::LG_OR:   { return {2, 2.1}; }
+    case Op::LG_AND:  { return {3, 3.1}; }
 
     //Bitwise
-    case BinOp::BW_OR:   { return {4, 4.1}; }
-    case BinOp::BW_XOR:  { return {5, 5.1}; }
-    case BinOp::BW_AND:  { return {6, 6.1}; }
+    case Op::BW_OR:   { return {4, 4.1}; }
+    case Op::BW_XOR:  { return {5, 5.1}; }
+    case Op::BW_AND:  { return {6, 6.1}; }
 
-    case BinOp::EQUIV:   [[fallthrough]];
-    case BinOp::NEQUIV:  { return {7, 7.1}; }
+    case Op::EQUIV:   [[fallthrough]];
+    case Op::NEQUIV:  { return {7, 7.1}; }
 
-    case BinOp::LT:      [[fallthrough]];
-    case BinOp::GT:      [[fallthrough]];
-    case BinOp::LTE:     [[fallthrough]];
-    case BinOp::GTE:     { return {8, 8.1}; }
+    case Op::LT:      [[fallthrough]];
+    case Op::GT:      [[fallthrough]];
+    case Op::LTE:     [[fallthrough]];
+    case Op::GTE:     { return {8, 8.1}; }
 
-    case BinOp::LSL:     [[fallthrough]];
-    case BinOp::LSR:     { return {9, 9.1}; }
+    case Op::LSL:     [[fallthrough]];
+    case Op::LSR:     { return {9, 9.1}; }
 
-    case BinOp::SUB:     [[fallthrough]];
-    case BinOp::ADD:     { return {10, 10.1}; }
-    case BinOp::MOD:     [[fallthrough]];
-    case BinOp::DIV:     [[fallthrough]];
-    case BinOp::MUL:     { return {11, 11.1}; }
+    case Op::SUB:     [[fallthrough]];
+    case Op::ADD:     { return {10, 10.1}; }
+    case Op::MOD:     [[fallthrough]];
+    case Op::DIV:     [[fallthrough]];
+    case Op::MUL:     { return {11, 11.1}; }
 
     // Power (right associative)
-    case BinOp::PWR:     { return {12, 11.9}; }
-
-    default: assert(false && "Error: Unknown BinOp; Cannot get binding power.");
+    case Op::PWR:     { return {12, 11.9}; }
+    default: assert(false && "Error: Unknown infix Op; Cannot get binding power.");
     }
 }
 
-BinOp Parser::set_op(const std::string &optype) {
-    if (optype == "+")  { return BinOp::ADD; }
-    if (optype == "-")  { return BinOp::SUB; }
-    if (optype == "*")  { return BinOp::MUL; }
-    if (optype == "/")  { return BinOp::DIV; }
-    if (optype == "%")  { return BinOp::MOD; }
-    if (optype == "**") { return BinOp::PWR; }
-    if (optype == "=")  { return BinOp::EQ; }
-    if (optype == "<")  { return BinOp::LT; }
-    if (optype == ">")  { return BinOp::GT; }
-    if (optype == "<<") { return BinOp::LSL; }
-    if (optype == ">>") { return BinOp::LSR; }
-    if (optype == "<=") { return BinOp::LTE; }
-    if (optype == ">=") { return BinOp::GTE; }
-    if (optype == "==") { return BinOp::EQUIV; }
-    if (optype == "!=") { return BinOp::NEQUIV; }
-    if (optype == "|")  { return BinOp::BW_OR; }
-    if (optype == "||") { return BinOp::LG_OR; }
-    if (optype == "&")  { return BinOp::BW_AND; }
-    if (optype == "&&") { return BinOp::LG_AND; }
-    if (optype == "^")  { return BinOp::BW_XOR; }
-    return BinOp::NIL_;
+float Parser::get_prefix_bpower(const Op op) {
+    switch (op) {
+    case Op::SUB:     [[fallthrough]];
+    case Op::ADD:     return 13.f;
+
+    case Op::BW_NOT:  [[fallthrough]];
+    case Op::LG_NOT:  [[fallthrough]];
+    case Op::INC:     [[fallthrough]];
+    case Op::DEC:     return 14.f;
+    default: {
+        std::println(stderr, "[{}:{}] Error: Invalid prefix operator `{}`.", 
+        peek().value().loc.line, peek().value().loc.col, peek().value().value);
+        exit(EXIT_FAILURE);
+    }
+    }
+}
+
+float Parser::get_postfix_bpower(const Op op) {
+    switch (op) {
+    case Op::INC:     [[fallthrough]];
+    case Op::DEC:     return 15.f;
+    default: {
+        std::println(stderr, "[{}:{}] Error: Invalid postfix operator `{}`.", 
+        peek().value().loc.line, peek().value().loc.col, peek().value().value);
+        exit(EXIT_FAILURE);
+    }
+    }
+}
+
+bool Parser::is_assign_or_unary_op(const Op op) {
+    switch (op) {
+    case Op::INC:     [[fallthrough]];
+    case Op::DEC:     [[fallthrough]];
+    case Op::EQ:      [[fallthrough]];
+    case Op::ADD_EQ:  [[fallthrough]];
+    case Op::SUB_EQ:  [[fallthrough]];
+    case Op::MUL_EQ:  [[fallthrough]];
+    case Op::DIV_EQ:  [[fallthrough]];
+    case Op::MOD_EQ:  [[fallthrough]];
+    case Op::PWR_EQ:  [[fallthrough]];
+    case Op::AND_EQ:  [[fallthrough]];
+    case Op::OR_EQ:   [[fallthrough]];
+    case Op::XOR_EQ:  [[fallthrough]];
+    case Op::LSL_EQ:  [[fallthrough]];
+    case Op::LSR_EQ:  return true;
+    default:          return false;
+    }
+}
+
+Fix Parser::get_fix() {
+    m_tok_ptr--; // move back to get context on prev token
+    if (validate_token(0, TokenType::VAR_IDENT) ||
+        validate_token(0, TokenType::LIT_INT)) {
+        m_tok_ptr++;
+        return Fix::POSTFIX;
+    }
+
+    if (validate_token(2, TokenType::VAR_IDENT) ||
+        validate_token(2, TokenType::LIT_INT) ||
+        validate_token(2, TokenType::KW_EXIT)) {
+        m_tok_ptr++;
+        return Fix::PREFIX;
+    }
+
+    std::println(stderr, "[{}:{}] Error: Invalid unary expression `{}`.",
+                 peek().value().loc.line, peek().value().loc.line, peek().value().value);
+    exit(EXIT_FAILURE);
+}
+
+Op Parser::set_op(const std::string &optype) {
+    if (optype == "+")      { return Op::ADD; }
+    if (optype == "-")      { return Op::SUB; }
+    if (optype == "*")      { return Op::MUL; }
+    if (optype == "/")      { return Op::DIV; }
+    if (optype == "%")      { return Op::MOD; }
+    if (optype == "**")     { return Op::PWR; }
+    if (optype == "++")     { return Op::INC; }
+    if (optype == "--")     { return Op::DEC; }
+    if (optype == "=")      { return Op::EQ; }
+    if (optype == "+=")     { return Op::ADD_EQ; }
+    if (optype == "-=")     { return Op::SUB_EQ; }
+    if (optype == "*=")     { return Op::MUL_EQ; }
+    if (optype == "/=")     { return Op::DIV_EQ; }
+    if (optype == "%=")     { return Op::MOD_EQ; }
+    if (optype == "**=")    { return Op::PWR_EQ; }
+    if (optype == "&=")     { return Op::AND_EQ; }
+    if (optype == "|=")     { return Op::OR_EQ; }
+    if (optype == "^=")     { return Op::XOR_EQ; }
+    if (optype == "<<=")    { return Op::LSL_EQ; }
+    if (optype == ">>=")    { return Op::LSR_EQ; }
+    if (optype == "<")      { return Op::LT; }
+    if (optype == ">")      { return Op::GT; }
+    if (optype == "<<")     { return Op::LSL; }
+    if (optype == ">>")     { return Op::LSR; }
+    if (optype == "<=")     { return Op::LTE; }
+    if (optype == ">=")     { return Op::GTE; }
+    if (optype == "==")     { return Op::EQUIV; }
+    if (optype == "!=")     { return Op::NEQUIV; }
+    if (optype == "|")      { return Op::BW_OR; }
+    if (optype == "||")     { return Op::LG_OR; }
+    if (optype == "~")      { return Op::BW_NOT; }
+    if (optype == "&")      { return Op::BW_AND; }
+    if (optype == "!")      { return Op::LG_NOT; }
+    if (optype == "&&")     { return Op::LG_AND; }
+    if (optype == "^")      { return Op::BW_XOR; }
+    return Op::NIL_;
 }
 
 NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
-    #pragma clang diagnostic ignored "-Wswitch"
-
-    const NodeScope& loc_scp, const bool is_reassign) {
-
+    NodeScope& loc_scp, const bool is_reassign) 
+{
     if (!validate_token(0, TokenType::VAR_IDENT)) {
         std::println(
             "[{}:{}] Error: Expected identifier after `let`.",
             peek().value().loc.line, peek().value().loc.col);
-        std::println("This is what failed: {}", peek().value().value);
         exit(EXIT_FAILURE);
     }
-    if (!validate_token(1, TokenType::NIL_, BinOp::EQ)) {
-        std::println("[{}:{}] Error: Expected `=` after declaration `{}`",
-            peek().value().loc.line, peek().value().loc.col, peek().value().value);
+    if (!is_assign_or_unary_op(set_op(peek(1).value().value))) {
+        std::println(
+            "[{}:{}] Error: Expected `=` or valid operator after declaration `{}`",
+            peek().value().loc.line, peek().value().loc.col, peek(1).value().value);
         exit(EXIT_FAILURE);
     }
 
@@ -130,7 +211,6 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
     if (is_reassign) {
         dec.kind = VarType::MUT;
         dec.ident.name = peek().value().value;
-        next(); // eat ident
     } else {
         switch (ttype) {
             case TokenType::KW_LET: {
@@ -143,24 +223,20 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
             }
             default: { assert(false && "Error: Unknown variable declaration type."); }
         }
-
         dec.ident = NodeIdentifier({
             .name = std::move(peek().value().value),
             .loc = peek().value().loc
         });
-
         if (m_program.main.var_table.contains(dec.ident.name) || loc_scp.var_table.contains(dec.ident.name)) {
             std::println(stderr, "[{}:{}] Error: Re-definition of `{}`.",
                 peek().value().loc.line, peek().value().loc.col - 1, dec.ident.name);
             exit(EXIT_FAILURE);
         }
-        next(); // eat ident
     }
-    next(); // eat `=`
     dec.value = parse_expr(false);
-
     check_semi();
-
+    std::get<NodeExpr>(dec.value->m_node).print();
+    std::println();
     return dec;
 }
 
@@ -175,10 +251,11 @@ std::unique_ptr<SyntaxNode> Parser::parse_expr(const bool chk_for_paren) {
     return std::make_unique<SyntaxNode>(std::move(*parse_expr_impl(0)));
 }
 
-std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
+std::unique_ptr<NodeExpr> Parser::parse_expr_impl(const float min_rbp) {
     #pragma clang diagnostic ignored "-Wswitch"
 
-    auto lhs = std::make_unique<NodeBinaryExpr>();
+    // TODO: Impl Unary logic
+    auto lhs = std::make_unique<NodeExpr>();
     if (peek().value().type == TokenType::DELIM_LPAREN) {
         next(); // '('
         lhs = parse_expr_impl(0); // subexpression
@@ -191,55 +268,112 @@ std::unique_ptr<NodeBinaryExpr> Parser::parse_expr_impl(const float min_rbp) {
 
     if (validate_token(0, TokenType::DELIM_SEMI)) return lhs;
     if (validate_token(1, TokenType::DELIM_LCURLY)) return lhs; // for scopes
- 
+
     auto [type, value, loc] = peek().value();
 
     switch (type) {
         case TokenType::LIT_INT: {
-            lhs->atom.emplace<NodeIntLiteral>(NodeIntLiteral({ 
+            lhs->atom.emplace<NodeIntLiteral>(NodeIntLiteral({
                 .value = std::stoi(value),
                 .loc = loc
             }));
             lhs->var_count++;
+            next(); // eat lit
             break;
         }
         case TokenType::VAR_IDENT: {
-            lhs->atom.emplace<NodeIdentifier>(NodeIdentifier({ 
+            lhs->atom.emplace<NodeIdentifier>(NodeIdentifier({
                 .name = std::move(value),
                 .loc = loc
             }));
             lhs->var_count++;
+            next(); // eat ident
             break;
         }
+        case TokenType::OP: break;
+        default: next();
     }
-    next();
 
-    if (!validate_token(0, TokenType::BIN_OP) && !validate_token(0, TokenType::DELIM_SEMI) 
+    if (!validate_token(0, TokenType::OP) && !validate_token(0, TokenType::DELIM_SEMI)
         && !validate_token(0, TokenType::DELIM_RPAREN)){
-        std::println(stderr, "[{}:{}] Error: Expected binary operator before `{}`.", 
+        std::println(stderr, "[{}:{}] Error: Expected binary operator before `{}`.",
                      peek().value().loc.line, peek().value().loc.col, peek().value().value);
         exit(EXIT_FAILURE);
     }
 
-    while (validate_token(0, TokenType::BIN_OP)) {
-        const BinOp op = set_op(peek().value().value);
+    while (validate_token(0, TokenType::OP)) {
+        Op op = set_op(peek().value().value);
+        bool is_assign = false;
+        float lbp = 9999.f, rbp = 9999.f;
 
-        if (op == BinOp::EQ) {
-            std::println(stderr, "[{}:{}] Error: Operator `=` not allowed in expression.", 
-                         peek().value().loc.line, peek().value().loc.col);
+        // deconstruct combo assign op
+        switch (op) {
+            case Op::ADD_EQ: {
+                op = Op::ADD;
+                break;
+            }
+            case Op::SUB_EQ: {
+                op = Op::SUB;
+                break;
+            }
+            case Op::MUL_EQ: {
+                op = Op::MUL;
+                break;
+            }
+            case Op::DIV_EQ: {
+                op = Op::DIV;
+                break;
+            }
+            case Op::PWR_EQ: {
+                op = Op::PWR;
+                break;
+            }
+            case Op::MOD_EQ: {
+                op = Op::MOD;
+                break;
+            }
+            case Op::AND_EQ: {
+                op = Op::BW_AND;
+                break;
+            }
+            case Op::OR_EQ: {
+                op = Op::BW_OR;
+                break;
+            }
+            case Op::XOR_EQ: {
+                op = Op::BW_XOR;
+                break;
+            }
+            case Op::LSL_EQ: {
+                op = Op::LSL;
+                break;
+            }
+            case Op::LSR_EQ: {
+                op = Op::LSR;
+                break;
+            }
+            case Op::DEC: [[fallthrough]];
+            case Op::INC: {
+                lhs->fix = get_fix();
+                // std::println("OP: {}", NodeExpr::op_to_string(op));
+                if (lhs->fix == Fix::PREFIX) {
+                    lbp = get_prefix_bpower(op);
+                    break;
+                }
+                lbp = get_postfix_bpower(op);
+                break;
+            }
         }
-        auto [lbp, rbp] = get_binding_power(op);
-
+        if (lbp == 9999.f) std::tie(lbp, rbp) = get_infix_bpower(op); //
         if (lbp < min_rbp) break;
-
-        next();
-
+        next(); // eat op
         auto rhs = parse_expr_impl(rbp);
-        auto node = std::make_unique<NodeBinaryExpr>();
+        auto node = std::make_unique<NodeExpr>();
 
         node->op = op;
         node->loc = lhs->loc;
         node->var_count += lhs->var_count + rhs->var_count;
+        node->fix = lhs->fix;
         node->lhs = std::move(lhs);
         node->rhs = std::move(rhs);
 
@@ -307,7 +441,6 @@ std::optional<NodeStmtElse> Parser::parse_stmt_else(NodeScope& loc_scp) {
         std::println(stderr, "[{}:{}] Error: Missing `{{`.", peek(1).value().loc.line, peek(1).value().loc.col);
         exit(EXIT_FAILURE);
     }
-
     const auto loc = next().value().loc; // eat `else`
     NodeScope else_scp = parse_stmt(false, loc_scp);
 
@@ -316,7 +449,6 @@ std::optional<NodeStmtElse> Parser::parse_stmt_else(NodeScope& loc_scp) {
         exit(EXIT_FAILURE);
     }
     next(); // '}'
-
     return NodeStmtElse {
         .scope = std::move(else_scp),
         .loc = loc,
@@ -334,7 +466,6 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
     exit_.loc.line = peek().value().loc.line;
     exit_.loc.col = peek().value().loc.col;
     exit_.exit_code = parse_expr(false);
-
     return exit_;
 }
 
@@ -358,7 +489,6 @@ NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
         return is_prog ? peek().has_value()
                        : !validate_token(0, TokenType::DELIM_RCURLY) && peek().has_value();
     };
-
     scope.var_table.insert(loc_scp.var_table.begin(), loc_scp.var_table.end());
 
     while (clause_func()) {
@@ -394,8 +524,9 @@ NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
                 const bool in_glb_scp = m_program.main.var_table.contains(peeked.value);
 
                 if (in_loc_scp || in_glb_scp) {
-                    const auto kind = in_loc_scp ? std::get_if<NodeVarDeclaration>(&scope.var_table.at(peeked.value)->m_node)->kind
-                                                : std::get_if<NodeVarDeclaration>(&m_program.main.var_table.at(peeked.value)->m_node)->kind;
+                    const auto kind = 
+                        in_loc_scp ? std::get_if<NodeVarDeclaration>(&scope.var_table.at(peeked.value)->m_node)->kind
+                                   : std::get_if<NodeVarDeclaration>(&m_program.main.var_table.at(peeked.value)->m_node)->kind;
 
                     if (kind != VarType::MUT) {
                         std::println(stderr, "[{}:{}] Error: Cannot reassign variable of type `let`; "

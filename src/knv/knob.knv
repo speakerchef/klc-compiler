@@ -9,7 +9,7 @@ while (outer < 50000) {
         if (x & 1) {
             bits = bits + 1;
         }
-        x = x / 2;
+        x /= 2;
     }
 
     if (bits > 8) {
@@ -29,7 +29,7 @@ while (outer < 50000) {
         } else {
             collatz = collatz / 2;
         }
-        steps = steps + 1;
+        steps += 1;
     }
 
     ha_sh = (ha_sh + steps) & 16777215;

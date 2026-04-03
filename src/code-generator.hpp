@@ -1,12 +1,8 @@
+#pragma once
 #include "syntax-tree.hpp"
-#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <string>
-
-enum class Marker{
-    END
-};
 
 class CodeGenerator {
   public:
@@ -31,8 +27,8 @@ class CodeGenerator {
 
     [[nodiscard]]            const SyntaxNode* peek(size_t offset) const;
     [[maybe_unused]]         const SyntaxNode* next();
-    [[nodiscard]]            int32_t emit_expr(const NodeBinaryExpr& node, const int *cached_adr, bool fresh_alloc);
-                             void emit_op(BinOp op);
+    [[nodiscard]]            std::tuple<int32_t, int32_t> emit_expr(NodeExpr& node, const int *cached_adr, bool fresh_alloc);
+                             bool emit_op(NodeExpr& node);
                              void emit_store_literal(int64_t val);
                              void get_count_vars(const NodeScope& node);
                              void emit_stmt_exit(const NodeStmtExit& node);

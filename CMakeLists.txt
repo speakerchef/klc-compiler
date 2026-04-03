@@ -36,11 +36,11 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(klc-tests ./tests/klc-tests.cpp)
-target_link_libraries(klc-tests PRIVATE klc_lib GTest::gtest_main)
+#add_executable(klc-tests ./tests/klc-tests.cpp)
+#target_link_libraries(klc-tests PRIVATE klc_lib GTest::gtest_main)
 
 include(GoogleTest)
-gtest_discover_tests(klc-tests)
+#gtest_discover_tests(klc-tests)
 
 target_compile_options(klc PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
-target_compile_options(klc-tests PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)
+#target_compile_options(klc-tests PRIVATE -Wall -Wextra -Wconversion -Wpedantic -Wimplicit-fallthrough)

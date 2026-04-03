@@ -9,27 +9,42 @@
 #include <vector>
 
 struct SyntaxNode;
-struct NodeBinaryExpr;
+struct NodeExpr;
 struct NodeUnaryExpr;
 struct NodeIdentifier;
 struct NodeIntLiteral;
 struct NodeStmtExit;
 
-enum class BinOp {
+enum class Op {
     ADD,
     SUB,
     MUL,
     DIV,
     PWR,
     MOD,
+    INC,
+    DEC,
     LSL,
     LSR,
+    BW_NOT, // '~'
     BW_OR,
     BW_AND,
     BW_XOR,
+    LG_NOT, // '!'
     LG_OR,
     LG_AND,
     EQ,
+    ADD_EQ,
+    SUB_EQ,
+    MUL_EQ,
+    DIV_EQ,
+    PWR_EQ,
+    MOD_EQ,
+    AND_EQ,
+    OR_EQ,
+    XOR_EQ,
+    LSL_EQ,
+    LSR_EQ,
     EQUIV,
     NEQUIV,
     LT,
@@ -73,22 +88,24 @@ struct NodeIntLiteral {
     LocData loc;
 };
 
-struct NodeBinaryExpr { // eg. a + b or 4 * 5
-    std::variant<std::monostate, NodeIdentifier, NodeIntLiteral> atom;
-    BinOp op;
-    std::unique_ptr<NodeBinaryExpr> lhs;
-    std::unique_ptr<NodeBinaryExpr> rhs;
+using ExprAtom_T = std::variant<std::monostate, NodeIdentifier, NodeIntLiteral>;
+
+enum class Fix {
+    PREFIX,
+    POSTFIX,
+};
+
+struct NodeExpr { // eg. a + b, a += 5, -5, i++, i--, etc
+    ExprAtom_T atom;
+    Op op;
+    Fix fix;
+    std::unique_ptr<NodeExpr> lhs;
+    std::unique_ptr<NodeExpr> rhs;
     size_t var_count;
     LocData loc;
 
     void print() const; // print expr in prefix notation eg. (+ 5 8) === 5 + 8
-    [[nodiscard]] static std::string op_to_string(BinOp bop);
-};
-
-struct NodeUnaryExpr {
-    std::unique_ptr<SyntaxNode> right; // right recursed
-    BinOp op;
-    LocData loc;
+    [[nodiscard]] static std::string op_to_string(Op op);
 };
 
 // Variables
@@ -147,7 +164,7 @@ struct NodeProgram {
 
 struct SyntaxNode {
   public:
-    std::variant<NodeScope, NodeBinaryExpr, NodeUnaryExpr,
+    std::variant<NodeScope, NodeExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
                  NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif, 
                  NodeStmtWhile, NodeFunc> m_node;

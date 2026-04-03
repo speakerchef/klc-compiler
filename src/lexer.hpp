@@ -17,6 +17,7 @@ enum class TokenType {
     DELIM_SEMI,
     KW_EXIT,
     KW_RETURN,
+    KW_FN,
     KW_LET,
     KW_MUT,
     KW_IF,
@@ -24,16 +25,13 @@ enum class TokenType {
     KW_ELSE,
     KW_WHILE,
     KW_FOR,
-    BIN_OP,
-    OP_EQUALS,
-    OP_ADD,
-    OP_SUB,
-    OP_MULT,
-    OP_DIV,
+    OP,
     DELIM_LPAREN,
     DELIM_RPAREN,
     DELIM_LCURLY,
     DELIM_RCURLY,
+    DELIM_LSQUARE,
+    DELIM_RSQUARE,
     LIT_INT,
     VAR_IDENT,
     NIL_,
@@ -65,6 +63,8 @@ class Lexer {
     std::ofstream m_ofs;
 
     /*==========================================================*/
-    [[nodiscard]] static Token classify_token(const std::string &buf) noexcept;
+    [[nodiscard]] static Token classify_token(const std::string &buf);
+    [[nodiscard]] static bool is_numeric(const std::string& buf);
+    [[nodiscard]] static bool is_op(const std::string& buf);
     friend class LexerTests;
 };

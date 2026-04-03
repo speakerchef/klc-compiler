@@ -22,15 +22,19 @@ class Parser {
 
 //===================================================================================================
  
-    [[nodiscard]]       static std::tuple<float, float> get_binding_power(BinOp bop);
-    [[nodiscard]]       static BinOp set_op(const std::string& optype);
-    [[nodiscard]]       bool validate_token(size_t offset, TokenType ttype, BinOp bop) const;
+    [[nodiscard]]       static std::tuple<float, float> get_infix_bpower(Op op);
+    [[nodiscard]]       float get_prefix_bpower(Op op);
+    [[nodiscard]]       float get_postfix_bpower(Op op);
+    [[nodiscard]]       static bool is_assign_or_unary_op(Op op);
+    [[nodiscard]]       static Op set_op(const std::string& optype);
+    [[nodiscard]]       bool validate_token(size_t offset, TokenType ttype, Op bop) const;
     [[nodiscard]]       std::optional<Token> peek(size_t offset) const;
     [[maybe_unused]]    std::optional<Token> next();
     [[nodiscard]]       NodeVarDeclaration parse_declaration(TokenType ttype, 
-                                   const NodeScope& loc_scp, bool is_reassign);
+                                   NodeScope& loc_scp, bool is_reassign);
+    [[nodiscard]]       Fix get_fix();
     [[nodiscard]]       std::unique_ptr<SyntaxNode> parse_expr(bool chk_for_paren);
-    [[nodiscard]]       std::unique_ptr<NodeBinaryExpr> parse_expr_impl(float min_rbp);
+    [[nodiscard]]       std::unique_ptr<NodeExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]       NodeStmtExit parse_stmt_exit(TokenType ttype,
                         const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
     [[nodiscard]]       NodeStmtIf parse_stmt_if(NodeScope& loc_scp);

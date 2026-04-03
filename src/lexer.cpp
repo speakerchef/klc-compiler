@@ -1,6 +1,8 @@
 #include "lexer.hpp"
 #include "include/utils.hpp"
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <print>
@@ -81,6 +83,32 @@ std::vector<Token> Lexer::tokenize() {
             };
 
             switch (ch) {
+                case '-': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
+                }
+                case '+': {
+                    char op; m_ifs.get(op);
+                    if (op == ch) {
+                        fix_char(ch, ch);
+                        continue;
+                    }
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
+                }
                 case '=': {
                     char op; m_ifs.get(op);
                     if (op == ch) {
@@ -106,6 +134,16 @@ std::vector<Token> Lexer::tokenize() {
                         continue;
                     }
                     if (op == '>') {
+                        char op2;
+                        m_ifs.get(op2);
+                        if (op2 == '=') {
+                            col_cnt += 2;
+                            m_tokens.emplace_back(classify_token({ch, ch, op2}));
+                            m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
+                            tok_idx++;
+                            continue;
+                        }
+                        m_ifs.unget();
                         fix_char(ch, op);
                         continue;
                     }
@@ -119,6 +157,17 @@ std::vector<Token> Lexer::tokenize() {
                         continue;
                     }
                     if (op == '<') {
+                        char op2;
+                        m_ifs.get(op2);
+                        if (op2 == '=') {
+                            col_cnt += 2;
+                            m_tokens.emplace_back(classify_token({ch, ch, op2}));
+                            m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
+                            tok_idx++;
+                            continue;
+                        }
+                        m_ifs.unget();
+
                         fix_char(ch, op);
                         continue;
                     }
@@ -131,6 +180,10 @@ std::vector<Token> Lexer::tokenize() {
                         fix_char(ch, ch);
                         continue;
                     }
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
                     m_ifs.unget();
                     break;
                 }
@@ -140,13 +193,43 @@ std::vector<Token> Lexer::tokenize() {
                         fix_char(ch, ch);
                         continue;
                     }
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
                     m_ifs.unget();
                     break;
                 }
                 case '*': {
                     char op; m_ifs.get(op);
                     if (op == ch) {
+                        char op2;
+                        m_ifs.get(op2);
+                        if (op2 == '=') {
+                            col_cnt += 2;
+                            m_tokens.emplace_back(classify_token({ch, ch, op2}));
+                            m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
+                            tok_idx++;
+                            continue;
+                        }
+                        m_ifs.unget();
+
                         fix_char(ch, ch);
+                        continue;
+                    }
+                    if (op == '=') {
+                        fix_char(ch, op);
+                        continue;
+                    }
+                    m_ifs.unget();
+                    break;
+                }
+                case '/': [[fallthrough]];
+                case '%': [[fallthrough]];
+                case '^': {
+                    char op; m_ifs.get(op);
+                    if (op == '=') {
+                        fix_char(ch, op);
                         continue;
                     }
                     m_ifs.unget();
@@ -163,14 +246,22 @@ std::vector<Token> Lexer::tokenize() {
     return m_tokens;
 }
 
+bool Lexer::is_numeric(const std::string& buf) {
+    return std::all_of(buf.begin(), buf.end(), ::isdigit);
+}
+
+bool Lexer::is_op(const std::string& buf) {
+    return buf.find_first_not_of("+-*/<>=|&^!%");
+}
+
 /* */
-Token Lexer::classify_token(const std::string &buf) noexcept {
+Token Lexer::classify_token(const std::string &buf) {
     Token tok{};
 
-    if (buf.find_first_not_of("0123456789"))   { tok.type = TokenType::LIT_INT; }
-    else if (buf.find_first_not_of("+-*/<>=|&^!%"))    { tok.type = TokenType::BIN_OP; }
-
-    else if (buf == ";")        { tok.type = TokenType::DELIM_SEMI; } 
+    if (is_numeric(buf))        { tok.type = TokenType::LIT_INT; }
+    else if (is_op(buf))        { tok.type = TokenType::OP; }
+    else if (buf == "fn")       { tok.type = TokenType::KW_FN; } 
+    else if (buf == "return")   { tok.type = TokenType::KW_RETURN; } 
     else if (buf == "exit")     { tok.type = TokenType::KW_EXIT; } 
     else if (buf == "let")      { tok.type = TokenType::KW_LET; } 
     else if (buf == "mut")      { tok.type = TokenType::KW_MUT; } 
@@ -179,10 +270,13 @@ Token Lexer::classify_token(const std::string &buf) noexcept {
     else if (buf == "else")     { tok.type = TokenType::KW_ELSE; }
     else if (buf == "while")    { tok.type = TokenType::KW_WHILE; }
     else if (buf == "for")      { tok.type = TokenType::KW_FOR; }
+    else if (buf == ";")        { tok.type = TokenType::DELIM_SEMI; } 
     else if (buf == "(")        { tok.type = TokenType::DELIM_LPAREN; }
     else if (buf == ")")        { tok.type = TokenType::DELIM_RPAREN; }
     else if (buf == "{")        { tok.type = TokenType::DELIM_LCURLY; }
     else if (buf == "}")        { tok.type = TokenType::DELIM_RCURLY; }
+    else if (buf == "[")        { tok.type = TokenType::DELIM_LSQUARE; }
+    else if (buf == "]")        { tok.type = TokenType::DELIM_RSQUARE; }
     else                        { tok.type = TokenType::VAR_IDENT; }
 
     tok.value = buf;
