@@ -16,6 +16,7 @@ struct NodeIntLiteral;
 struct NodeStmtExit;
 
 enum class Op {
+    NOP,
     ADD,
     SUB,
     MUL,
@@ -97,8 +98,10 @@ enum class Fix {
 
 struct NodeExpr { // eg. a + b, a += 5, -5, i++, i--, etc
     ExprAtom_T atom;
-    Op op;
+    Op op = Op::NOP;
     Fix fix;
+    bool is_negative = false;
+    bool is_positive = false;
     std::unique_ptr<NodeExpr> lhs;
     std::unique_ptr<NodeExpr> rhs;
     size_t var_count;

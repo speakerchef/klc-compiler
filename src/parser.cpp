@@ -2,9 +2,11 @@
 #include "lexer.hpp"
 #include "syntax-tree.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <print>
@@ -290,7 +292,32 @@ std::unique_ptr<NodeExpr> Parser::parse_expr_impl(const float min_rbp) {
             next(); // eat ident
             break;
         }
-        case TokenType::OP: break;
+        case TokenType::OP: {
+            const Op op = set_op(value);
+            switch(op) {
+                case Op::SUB:{
+                    std::println("SUB");
+                    lhs->is_negative = true;
+                    float bp = get_prefix_bpower(op);
+                    next();
+                    auto rhs = parse_expr_impl(bp);
+                    auto node = std::make_unique<NodeExpr>();
+
+                    node->op = op;
+                    node->loc = lhs->loc;
+                    node->var_count += lhs->var_count + rhs->var_count;
+                    node->fix = lhs->fix;
+                    node->is_negative = lhs->is_negative;
+                    node->is_positive = lhs->is_positive;
+                    node->lhs = std::move(lhs);
+                    node->rhs = std::move(rhs);
+
+                    lhs = std::move(node);
+                    break;
+                }
+            }
+            break;
+        }
         default: next();
     }
 
@@ -304,7 +331,7 @@ std::unique_ptr<NodeExpr> Parser::parse_expr_impl(const float min_rbp) {
     while (validate_token(0, TokenType::OP)) {
         Op op = set_op(peek().value().value);
         bool is_assign = false;
-        float lbp = 9999.f, rbp = 9999.f;
+        float lbp = INFINITY, rbp = INFINITY;
 
         // deconstruct combo assign op
         switch (op) {
@@ -355,7 +382,6 @@ std::unique_ptr<NodeExpr> Parser::parse_expr_impl(const float min_rbp) {
             case Op::DEC: [[fallthrough]];
             case Op::INC: {
                 lhs->fix = get_fix();
-                // std::println("OP: {}", NodeExpr::op_to_string(op));
                 if (lhs->fix == Fix::PREFIX) {
                     lbp = get_prefix_bpower(op);
                     break;
@@ -364,9 +390,10 @@ std::unique_ptr<NodeExpr> Parser::parse_expr_impl(const float min_rbp) {
                 break;
             }
         }
-        if (lbp == 9999.f) std::tie(lbp, rbp) = get_infix_bpower(op); //
+        if (lbp == INFINITY) std::tie(lbp, rbp) = get_infix_bpower(op); //Binary ops
         if (lbp < min_rbp) break;
         next(); // eat op
+
         auto rhs = parse_expr_impl(rbp);
         auto node = std::make_unique<NodeExpr>();
 
