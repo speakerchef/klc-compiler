@@ -16,9 +16,8 @@ class Parser {
     std::vector<Token> m_tokens;
     size_t m_tok_ptr = 0;
     NodeProgram m_program;
-
-    std::vector<SyntaxNode> m_ast;
-    std::unordered_map<std::string, SyntaxNode*> m_var_table;
+    std::unordered_map<std::string, NodeVarDeclaration*> m_var_table;
+    std::unordered_map<std::string, NodeFunc*> m_fn_table;
 
 //===================================================================================================
  
@@ -36,13 +35,15 @@ class Parser {
     [[nodiscard]]       std::unique_ptr<SyntaxNode> parse_expr(bool chk_for_paren);
     [[nodiscard]]       std::unique_ptr<NodeExpr> parse_expr_impl(float min_rbp);
     [[nodiscard]]       NodeStmtExit parse_stmt_exit(TokenType ttype,
-                        const std::unordered_map<std::string, SyntaxNode*>& loc_scp);
+                        const std::unordered_map<std::string, NodeVarDeclaration*>& loc_scp);
     [[nodiscard]]       NodeStmtIf parse_stmt_if(NodeScope& loc_scp);
     [[nodiscard]]       std::vector<NodeStmtElif> parse_stmt_elif(NodeScope& loc_scp);
     [[nodiscard]]       std::optional<NodeStmtElse> parse_stmt_else(NodeScope& loc_scp);
     [[nodiscard]]       NodeStmtWhile parse_stmt_while(NodeScope& loc_scp);
+    [[nodiscard]]       NodeFunc parse_stmt_fn(NodeScope& loc_scp);
     [[nodiscard]]       NodeScope parse_stmt(bool is_prog, NodeScope& loc_scp);
                         void check_semi() const;
+                        void prnt_tok_seq(size_t range);
 
 //===================================================================================================
                         friend class ParserTests;

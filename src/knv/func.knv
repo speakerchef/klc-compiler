@@ -1,0 +1,8 @@
+fn foo(a, b) {
+    exit a + b;
+}
+
+mut test_var = 10;
+let const = --test_var - 4;
+
+foo(const + test_var, -15);

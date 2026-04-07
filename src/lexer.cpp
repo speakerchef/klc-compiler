@@ -66,14 +66,12 @@ std::vector<Token> Lexer::tokenize() {
                 buf.push_back(ch);
                 continue;
             }
-
             if (!buf.empty()) {
                 m_tokens.emplace_back(classify_token(buf));
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
                 tok_idx++;
                 buf.clear();
             }
-
             // double-char bin ops
             const auto fix_char = [&](const char c1, const char c2) {
                 col_cnt++;
@@ -81,7 +79,6 @@ std::vector<Token> Lexer::tokenize() {
                 m_tokens.at(tok_idx).loc = { line_cnt, col_cnt };
                 tok_idx++;
             };
-
             switch (ch) {
                 case '-': {
                     char op; m_ifs.get(op);
@@ -242,6 +239,9 @@ std::vector<Token> Lexer::tokenize() {
             tok_idx++;
         }
     }
+    for (const auto& tok : m_tokens) {
+        std::println("{}", tok.value);
+    }
 
     return m_tokens;
 }
@@ -277,6 +277,7 @@ Token Lexer::classify_token(const std::string &buf) {
     else if (buf == "}")        { tok.type = TokenType::DELIM_RCURLY; }
     else if (buf == "[")        { tok.type = TokenType::DELIM_LSQUARE; }
     else if (buf == "]")        { tok.type = TokenType::DELIM_RSQUARE; }
+    else if (buf == ",")        { tok.type = TokenType::DELIM_COMMA; }
     else                        { tok.type = TokenType::VAR_IDENT; }
 
     tok.value = buf;

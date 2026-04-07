@@ -32,6 +32,7 @@ enum class TokenType {
     DELIM_RCURLY,
     DELIM_LSQUARE,
     DELIM_RSQUARE,
+    DELIM_COMMA,
     LIT_INT,
     VAR_IDENT,
     NIL_,
@@ -60,7 +61,6 @@ class Lexer {
     std::vector<Token> m_tokens;
     size_t m_token_ptr = 0;
     std::ifstream m_ifs;
-    std::ofstream m_ofs;
 
     /*==========================================================*/
     [[nodiscard]] static Token classify_token(const std::string &buf);

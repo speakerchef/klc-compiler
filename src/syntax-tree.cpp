@@ -8,7 +8,7 @@
 NodeType SyntaxNode::get_node_type() const {
     auto node_typer = Overload {
         [](const NodeScope&)                           { return NodeType::SCOPE_NODE; },
-        [](const NodeExpr&)                      { return NodeType::EXPR_BIN; },
+        [](const NodeExpr&)                            { return NodeType::EXPR_BIN; },
         [](const NodeUnaryExpr&)                       { return NodeType::EXPR_UNARY; },
         [](const NodeIdentifier&)                      { return NodeType::VAR_IDENT; },
         [](const NodeVarDeclaration&)                  { return NodeType::VAR_DECL; },
@@ -19,6 +19,7 @@ NodeType SyntaxNode::get_node_type() const {
         [](const NodeStmtElse&)                        { return NodeType::STMT_ELSE; },
         [](const NodeStmtWhile&)                       { return NodeType::STMT_WHILE; },
         [](const NodeFunc&)                            { return NodeType::STMT_FN; },
+        [](const NodeCall&)                            { return NodeType::CALL_NODE; },
     };
     return std::visit(node_typer, m_node);
 }
@@ -73,22 +74,6 @@ void NodeExpr::print() const {
         std::visit(print_v, atom);
         return;
     }
-    // if (!lhs) {
-    //     const auto print_v = Overload {
-    //         [](const NodeIdentifier& val) { std:: print(" {})", val.name); },
-    //         [](const NodeIntLiteral& val) { std:: print(" {})", val.value); },
-    //         [](const std::monostate&) {},
-    //     };
-    //     std::visit(print_v, atom);
-    // }
-    // if (!rhs) {
-    //     const auto print_v = Overload {
-    //         [](const NodeIdentifier& val) { std:: print(" ({}", val.name); },
-    //         [](const NodeIntLiteral& val) { std:: print(" ({}", val.value); },
-    //         [](const std::monostate&) {},
-    //     };
-    //     std::visit(print_v, atom);
-    // }
 
     std::print(" ({}", op_to_string(op));
     if (lhs) lhs->print();

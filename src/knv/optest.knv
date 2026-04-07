@@ -1,2 +1,2 @@
-mut i = -5 - -5;
-exit i;
+mut i = 10;
+exit i-- + 1;

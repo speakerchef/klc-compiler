@@ -10,6 +10,7 @@
 
 struct SyntaxNode;
 struct NodeExpr;
+struct NodeFunc;
 struct NodeUnaryExpr;
 struct NodeIdentifier;
 struct NodeIntLiteral;
@@ -56,9 +57,9 @@ enum class Op {
 };
 
 enum class NodeType {
-    SYNTAX_NODE,
     SCOPE_NODE,
     EXPR_NODE,
+    CALL_NODE,
     EXPR_BIN,
     EXPR_UNARY,
     VAR_IDENT,
@@ -71,6 +72,7 @@ enum class NodeType {
     STMT_WHILE,
     STMT_FOR,
     STMT_FN,
+    STMT_RETURN,
 };
 
 enum class VarType {
@@ -119,12 +121,6 @@ struct NodeVarDeclaration {
     LocData loc;
 };
 
-struct NodeFunc {
-    NodeIdentifier ident;
-    std::vector<std::unique_ptr<SyntaxNode>> args;
-    LocData loc;
-};
-
 struct NodeStmtExit {
     std::unique_ptr<SyntaxNode> exit_code;
     LocData loc;
@@ -132,7 +128,21 @@ struct NodeStmtExit {
 
 struct NodeScope {
     std::vector<std::unique_ptr<SyntaxNode>> stmts;
-    std::unordered_map<std::string, SyntaxNode*> var_table;
+    std::unordered_map<std::string, NodeVarDeclaration*> var_table;
+    std::unordered_map<std::string, NodeFunc*> fn_table;
+    LocData loc;
+};
+
+struct NodeFunc {
+    NodeIdentifier ident;
+    std::vector<NodeIdentifier> args; // only arg idents
+    NodeScope scope;
+    LocData loc;
+};
+
+struct NodeCall { // for function calls
+    NodeIdentifier ident;
+    std::vector<std::unique_ptr<SyntaxNode>> args;
     LocData loc;
 };
 
@@ -169,8 +179,8 @@ struct SyntaxNode {
   public:
     std::variant<NodeScope, NodeExpr,
                  NodeIdentifier, NodeVarDeclaration, NodeIntLiteral,
-                 NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif, 
-                 NodeStmtWhile, NodeFunc> m_node;
+                 NodeStmtExit, NodeStmtIf, NodeStmtElse, NodeStmtElif,
+                 NodeStmtWhile, NodeFunc, NodeCall> m_node;
     
     //====================================//
     [[nodiscard]] NodeType get_node_type() const;
