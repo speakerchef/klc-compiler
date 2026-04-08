@@ -34,6 +34,7 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 | `elif`  | Alternate branch |
 | `else`  | Fallback branch |
 | `while` | Loop while condition true |
+| `fn` | Function declaration |
 
 ### Operators (so far)
 
@@ -45,6 +46,8 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 | Logical | `&&` `\|\|` | Boolean logic on truthy/falsy values |
 | Bitwise | `&` `\|` `^` | AND, OR, XOR |
 | Bit Shift | `<<` `>>` | LSL, LSR |
+| Unary | `++` `--` `-` | Increment/Decrement (pre & post), negation |
+| Operate-Assign | `+=` `-=` `*=` `/=` `%=` `**=` `&=` `\|=` `<<=` `>>=` | Combine operation and assignment |
 
 ### Other Features
 
@@ -54,6 +57,7 @@ source.knv → Lexer → Pratt Parser → AST → Codegen → AArch64 ASSEMBLY �
 - Local variables are inaccessible outside their scope
 - Nested if/elif/else with arbitrary depth
 - While loops with mutable state
+- Function declarations and calling with optional arguments
 
 ### Performance
 

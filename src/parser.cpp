@@ -267,8 +267,6 @@ NodeVarDeclaration Parser::parse_declaration(const TokenType ttype,
     }
     dec.value = parse_expr(false);
     check_semi();
-    std::get<NodeExpr>(dec.value->m_node).print();
-    std::println();
     return dec;
 }
 
@@ -582,8 +580,6 @@ NodeStmtExit Parser::parse_stmt_exit(const TokenType ttype,
     exit_.loc.line = peek().value().loc.line;
     exit_.loc.col = peek().value().loc.col;
     exit_.exit_code = parse_expr(false);
-    std::get<NodeExpr>(exit_.exit_code->m_node).print();
-    std::println();
     return exit_;
 }
 
@@ -606,7 +602,6 @@ NodeStmtWhile Parser::parse_stmt_while(NodeScope& loc_scp) {
 }
 
 NodeFunc Parser::parse_stmt_fn(NodeScope& loc_scp) {
-    prnt_tok_seq(4);
     NodeFunc func {};
     if (!validate_token(0, TokenType::VAR_IDENT)) {
         std::println(
@@ -822,7 +817,6 @@ NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
             case TokenType::KW_FN: {
                 auto res = parse_stmt_fn(scope);
                 const std::string id = res.ident.name;
-                std::println("Function being stored: {}", id);
 
                 scope.stmts.emplace_back(
                         std::make_unique<SyntaxNode>( std::move(res) )
@@ -832,14 +826,12 @@ NodeScope Parser::parse_stmt(const bool is_prog, NodeScope& loc_scp) {
                         .insert_or_assign(id,
                             ( &std::get<NodeFunc>(scope.stmts.back()->m_node) )
                         );
-                    std::println("Token at function def end: {}", peek().value().value);
                     break;
                 }
                 scope.fn_table
                     .insert_or_assign(id,
                         ( &std::get<NodeFunc>(scope.stmts.back()->m_node) )
                     );
-                std::println("Token at function def end: {}", peek().value().value);
                 break;
             }
         }

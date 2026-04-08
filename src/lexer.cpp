@@ -239,9 +239,9 @@ std::vector<Token> Lexer::tokenize() {
             tok_idx++;
         }
     }
-    for (const auto& tok : m_tokens) {
-        std::println("{}", tok.value);
-    }
+    // for (const auto& tok : m_tokens) {
+    //     std::println("{}", tok.value);
+    // }
 
     return m_tokens;
 }

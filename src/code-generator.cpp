@@ -20,90 +20,95 @@ CodeGenerator::CodeGenerator(NodeProgram &&prog, const std::string& exec_name) n
         exit(EXIT_FAILURE);
     }
     m_os << ".global _main\n.align 4\n_main:\n";
-    get_count_vars(m_program.main);
+    m_var_count += get_count_vars(m_program.main);
 
-    size_t incr = m_var_count * 16;
+    const size_t incr = m_var_count * 16;
     m_stack_sz = incr + 16;
-    m_os << std::format("\tSTP x29, x30, [sp, -{}]!\n", m_stack_sz);
-    m_os << std::format("\tMOV x29, sp\n", m_stack_sz);
-    m_os << std::format("\tMOV x28, x29\n", m_stack_sz); // x28 aliased to global scope
     m_stack_ptr = incr;
+    m_os << std::format("\tSUB sp, sp, {}\n", m_stack_sz);
+    m_os << std::format("\tSTR x29, [sp, 0]\n");
+    m_os << std::format("\tSTR x30, [sp, 8]\n");
+    m_os << std::format("\tMOV x29, sp\n");
+    m_os << std::format("\tMOV x28, x29\n"); // x28 aliased to global scope
 
     emit(m_program.main, m_os);
     m_os << m_fn_buf.str();
     m_os.close();
 }
 
-void CodeGenerator::get_count_vars(const NodeScope& node) {
+size_t CodeGenerator::get_count_vars(const NodeScope& node) {
+    size_t var_cnt = 0;
     for (const auto& stmt : node.stmts){
         switch (stmt->get_node_type()) {
             case NodeType::VAR_DECL: {
                 const auto& expr = std::get<NodeExpr>((std::get<NodeVarDeclaration>(stmt->m_node).value->m_node));
-                m_var_count += expr.var_count;
+                var_cnt += expr.var_count;
                 break;
             }
             case NodeType::STMT_EXIT: {
                 if (const auto& expr = std::get_if<NodeExpr>( 
                     &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node 
                 )) {
-                    m_var_count += expr->var_count;
+                    var_cnt += expr->var_count;
                 }
                 else if ( std::get_if<NodeIdentifier>( 
                     &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node 
-                )) { m_var_count++; }
+                )) { var_cnt++; }
                 break;
             }
             case NodeType::STMT_IF: {
                 const auto&[cond, scp, n_elif, n_else, loc] = std::get<NodeStmtIf>(stmt->m_node);
-                get_count_vars(scp);
+                var_cnt += get_count_vars(scp);
                 if (const auto& expr = std::get_if<NodeExpr>(&cond->m_node)) {
-                    m_var_count += expr->var_count;
+                    var_cnt += expr->var_count;
                 }
-                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { m_var_count++; }
+                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { var_cnt++; }
                 break;
             }
             case NodeType::STMT_ELIF: {
                 const auto&[cond, scp, loc] = std::get<NodeStmtElif>(stmt->m_node);
-                get_count_vars(scp);
+                var_cnt += get_count_vars(scp);
                 if (const auto& expr = std::get_if<NodeExpr>(&cond->m_node)) {
-                    m_var_count += expr->var_count;
+                    var_cnt += expr->var_count;
                 }
-                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { m_var_count++; }
+                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { var_cnt++; }
                 break;
             }
             case NodeType::STMT_WHILE: {
                 const auto&[cond, scp, loc] = std::get<NodeStmtWhile>(stmt->m_node);
-                get_count_vars(scp);
+                var_cnt += get_count_vars(scp);
                 if (const auto& expr = std::get_if<NodeExpr>(&cond->m_node)) {
-                    m_var_count += expr->var_count;
+                    var_cnt += expr->var_count;
                 }
-                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { m_var_count++; }
+                else if ( std::get_if<NodeIdentifier>(&cond->m_node)) { var_cnt++; }
                 break;
             }
             case NodeType::STMT_ELSE: {
                 const auto& scp = ((std::get<NodeStmtElse>(stmt->m_node)).scope);
-                get_count_vars(scp);
+                var_cnt += get_count_vars(scp);
                 break;
             }
             case NodeType::SCOPE_NODE: {
-                get_count_vars(std::get<NodeScope>(stmt->m_node));
+                var_cnt += get_count_vars(std::get<NodeScope>(stmt->m_node));
                 break;
             }
             case NodeType::STMT_FN: {
-                get_count_vars(std::get<NodeFunc>(stmt->m_node).scope);
+                var_cnt += get_count_vars(std::get<NodeFunc>(stmt->m_node).scope);
                 break;
             }
             case NodeType::CALL_NODE: {
-                get_count_vars(
+                var_cnt += get_count_vars(
                     m_program.main.fn_table.at(
                         std::get<NodeCall>(stmt->m_node).ident.name
                     )->scope
                 );
+                var_cnt += std::get<NodeCall>(stmt->m_node).args.size();
                 break;
             }
             default: assert(false && "Unknown node type!");
         }
     }
+    return var_cnt;
 }
 
 const SyntaxNode* CodeGenerator::peek(const size_t offset = 0) const {
@@ -126,11 +131,14 @@ std::string CodeGenerator::get_reg(const std::string& id) const {
     return m_program.main.var_table.contains(id) ? "x28" : "x29";
 }
 
-void CodeGenerator::emit_epilogue(std::ostream& buf) { buf << std::format("\tADD sp, sp, {}\n", m_stack_sz); }
+void CodeGenerator::emit_epilogue(std::ostream& buf) {
+    buf << std::format("\tLDR x29, [sp, 0]\n");
+    buf << std::format("\tLDR x30, [sp, 8]\n");
+    buf << std::format("\tADD sp, sp, {}\n", m_stack_sz);
+}
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node, std::ostream& buf) {
     const auto& [kind, ident, val, loc] = node;
     const auto& expr = std::get<NodeExpr>(val->m_node);
-    std::println("Register used in decl: {}", get_reg(ident.name));
     NodeExpr e2send = expr.op == Op::EQ ? std::move(*expr.rhs) 
                                         : std::move(std::get<NodeExpr>(val->m_node));
 
@@ -140,8 +148,8 @@ void CodeGenerator::emit_decl(const NodeVarDeclaration& node, std::ostream& buf)
                                             CachedLoc{ prev_adr, get_reg(ident.name) },
                                             false, buf);
         if (prev_adr != res) {
-            buf << std::format("\tLDR {}, [sp, {}]\n", get_reg(ident.name), res);
-            buf << std::format("\tSTR {}, [sp, {}]\n", get_reg(ident.name), prev_adr);
+            buf << std::format("\tLDR x8, [{}, {}]\n", get_reg(ident.name), res);
+            buf << std::format("\tSTR x8, [{}, {}]\n", get_reg(ident.name), prev_adr);
         }
         return;
     }
@@ -170,7 +178,6 @@ void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node, std::ostream& buf) 
             }
             buf << std::format("\tLDR x0, [{}, {}]\n", id ? get_reg(id->name) : "x29", temp);
         } else {
-            std::println("TEMP: {}, PERM: {}", temp, stack_loc);
             buf << std::format("\tLDR x0, [x29, {}]\n", stack_loc); 
         }
     }
@@ -305,7 +312,7 @@ bool CodeGenerator::emit_op(NodeExpr& node, std::ostream& buf) {
         }
         case Op::SUB:    {
             if (node.is_negative)
-                { std::println("Is negative"); buf  << "\tNEG x8, x8\n"; return false; }
+                { buf  << "\tNEG x8, x8\n"; return false; }
             buf << "\tSUB x8, x8, x9\n";  return false;
             break;
         }
@@ -459,7 +466,7 @@ std::tuple<int32_t, int32_t> CodeGenerator::emit_expr(NodeExpr& node,
 
     if (emit_post_op) { // emit side effect (post increment)
         const int32_t storage_loc_perm = cached_adr ? cached_adr.value().adr : m_stack_ptr;
-        buf << std::format("\tSTR x10, [x29, {}]\n", reg, storage_loc_perm);
+        buf << std::format("\tSTR x10, [{}, {}]\n", reg, storage_loc_perm);
         if (!cached_adr) m_stack_ptr -= 8;
         return {storage_loc_perm, storage_loc};
     }
@@ -469,32 +476,36 @@ std::tuple<int32_t, int32_t> CodeGenerator::emit_expr(NodeExpr& node,
 
 void CodeGenerator::emit_stmt_fn(const NodeFunc& node, std::ostream& buf) {
     const std::string fn_lbl = std::format("fn_{}:\n", node.ident.name);
-    const size_t frame_sz = (node.scope.var_table.size() +
+    const size_t frame_sz = (get_count_vars(node.scope) +
                             node.args.size()) * 16 + 16;
-    size_t frame_ptr = frame_sz;
+    int32_t frame_ptr = frame_sz;
 
     /* Clear stack ptr and var table for func scope.
      * Prevents clashing between variable idents. */
     const int32_t cached_stk_ptr = m_stack_ptr;
     const auto cached_var_table = m_cached_var;
-    m_stack_ptr = 0;
     m_cached_var.clear();
 
     m_fn_buf << fn_lbl;
-    m_fn_buf << std::format("\tSTP x29, x30, [sp, -{}]!\n", frame_sz);
+    m_fn_buf << std::format("\tSUB sp, sp, {}\n", frame_sz);
+    m_fn_buf << std::format("\tSTR x29, [sp, 0]\n");
+    m_fn_buf << std::format("\tSTR x30, [sp, 8]\n");
+    m_fn_buf << std::format("\tMOV x29, sp\n");
     m_fn_buf << "\tMOV x29, sp\n";
+
     for (size_t i = 0; i < node.args.size(); i++) {
         m_fn_buf << std::format("\tSTR x{}, [x29, {}]\n", i, frame_ptr);
         if (!m_cached_var.contains(node.args.at(i).name)) {
-            std::println("Fresh arg");
             m_cached_var.insert_or_assign(node.args.at(i).name, frame_ptr);
-        } else {
-            std::println("Arg exists");
         }
         frame_ptr -= 8;
     }
+    m_stack_ptr = frame_ptr;
     emit(node.scope, buf);
-    m_fn_buf << std::format("\tLDP x29, x30, [sp], {}\n", frame_sz);
+
+    m_fn_buf << std::format("\tLDR x29, [sp, 0]\n");
+    m_fn_buf << std::format("\tLDR x30, [sp, 8]\n");
+    m_fn_buf << std::format("\tADD sp, sp, {}\n", frame_sz);
     m_fn_buf << "\tRET\n";
 
     m_stack_ptr = cached_stk_ptr; m_cached_var = cached_var_table;
@@ -544,7 +555,6 @@ void CodeGenerator::emit(const NodeScope& node, std::ostream& buf) {
                 break;
             }
             case NodeType::STMT_FN: {
-                std::println("Emitting fn stmt");
                 emit_stmt_fn(std::get<NodeFunc>(stmt->m_node), m_fn_buf);
                 break;
             }

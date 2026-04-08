@@ -1,5 +1,6 @@
 #pragma once
 #include "syntax-tree.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
@@ -41,7 +42,7 @@ class CodeGenerator {
     [[nodiscard]]            std::string get_reg(const std::string& id) const;
                              bool emit_op(NodeExpr& node, std::ostream& buf);
                              void emit_store_literal(int64_t val, std::ostream& buf);
-                             void get_count_vars(const NodeScope& node);
+    [[nodiscard]]            size_t get_count_vars(const NodeScope& node);
                              void emit_stmt_exit(const NodeStmtExit& node, std::ostream& buf);
                              void emit_stmt_if(const NodeStmtIf& node, const std::string& lbl_if,
                                                                      const std::string& lbl_else,
