@@ -72,7 +72,7 @@ Run the benchmark below as a test!
 | KNOB (KLC) | 1.63s | - |
 | C (Clang) | 0.64s | ~2.5x Faster |
 | Python3 | 52.70s | ~32.3x Slower! |
-> This benchmark code is a showcase of all currently available features in `KLC`.
+> This benchmark code is a showcase of most currently available features in `KLC`.
 
 #### Try to run this! `echo $?` after should give you 153 :D
 ```
@@ -195,7 +195,7 @@ echo $?
 ## Roadmap
 
 - [ ] String literals
-- [ ] Functions
+- [x] Functions
 - [ ] Floating point support (Harder than you think)
 - [ ] Standard library functions like print()
 - [ ] Loop optimizations
