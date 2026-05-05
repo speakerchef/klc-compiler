@@ -1,3 +1,5 @@
+>!> [!WARNING]
+> Deprecated repo: Stay upto date with this project at [Rust Re-Write of KNOBC](https://github.com/speakerchef/knobc)
 # KLC: KNOB-Lang-Compiler
 
 A from scratch compiler for **KNOB** (**K**ompiled **NOB**) — a statically typed, semicolon delimited language that I'm creating that compiles down to AArch64 assembly: Uses `.knv` as the file extension.
