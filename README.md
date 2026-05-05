@@ -1,4 +1,4 @@
->!> [!WARNING]
+> [!WARNING]
 > Deprecated repo: Stay upto date with this project at [Rust Re-Write of KNOBC](https://github.com/speakerchef/knobc)
 # KLC: KNOB-Lang-Compiler
 
