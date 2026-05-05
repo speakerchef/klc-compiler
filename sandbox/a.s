@@ -44,7 +44,7 @@ branch1:
     b1Print:
         ADRP    x0, bout_str@PAGE
         ADD     x0, x0, bout_str@PAGEOFF
-        BL      _printf 
+        BL      _printf
 
 .data
 fmt_print_loop: .string "Printing %d numbers: \n"
@@ -62,8 +62,8 @@ print_loop:
     MOV     x20, dec_num
     STR     x20, [x29]
     BL      _printf
-    
-//  
+
+//
 // do
     loop:
 

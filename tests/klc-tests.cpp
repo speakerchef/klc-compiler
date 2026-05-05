@@ -50,13 +50,13 @@ static int run_program(const std::string &source) {
   return exit_code;
 }
 
-static const NodeBinaryExpr &get_decl_expr(const NodeProgram &prog,
+static const NodeExpr &get_decl_expr(const NodeProgram &prog,
                                            size_t idx) {
   const auto &decl = std::get<NodeVarDeclaration>(prog.main.stmts[idx]->m_node);
-  return std::get<NodeBinaryExpr>(decl.value->m_node);
+  return *decl.value;
 }
 
-static bool atom_is_int(const NodeBinaryExpr &e, int val) {
+static bool atom_is_int(const NodeExpr &e, int val) {
   const auto *lit = std::get_if<NodeIntLiteral>(&e.atom);
   return lit && lit->value == val;
 }
@@ -65,11 +65,11 @@ TEST(Parser, OperatorPrecedence) {
   auto prog = parse_string("let x = 2 + 3 * 4;");
   const auto &expr = get_decl_expr(prog, 0);
 
-  EXPECT_EQ(expr.op, BinOp::ADD);
+  EXPECT_EQ(expr.op, Op::ADD);
   ASSERT_NE(expr.lhs, nullptr);
   ASSERT_NE(expr.rhs, nullptr);
   EXPECT_TRUE(atom_is_int(*expr.lhs, 2));
-  EXPECT_EQ(expr.rhs->op, BinOp::MUL);
+  EXPECT_EQ(expr.rhs->op, Op::MUL);
   EXPECT_TRUE(atom_is_int(*expr.rhs->lhs, 3));
   EXPECT_TRUE(atom_is_int(*expr.rhs->rhs, 4));
 }
@@ -78,9 +78,9 @@ TEST(Parser, Parenthesization) {
   auto prog = parse_string("let x = (2 + 3) * 4;");
   const auto &expr = get_decl_expr(prog, 0);
 
-  EXPECT_EQ(expr.op, BinOp::MUL);
+  EXPECT_EQ(expr.op, Op::MUL);
   ASSERT_NE(expr.lhs, nullptr);
-  EXPECT_EQ(expr.lhs->op, BinOp::ADD);
+  EXPECT_EQ(expr.lhs->op, Op::ADD);
   EXPECT_TRUE(atom_is_int(*expr.rhs, 4));
 }
 
@@ -88,10 +88,10 @@ TEST(Parser, LeftAssociativity) {
   auto prog = parse_string("let x = 1 + 2 + 3;");
   const auto &expr = get_decl_expr(prog, 0);
 
-  EXPECT_EQ(expr.op, BinOp::ADD);
+  EXPECT_EQ(expr.op, Op::ADD);
   EXPECT_TRUE(atom_is_int(*expr.rhs, 3));
   ASSERT_NE(expr.lhs, nullptr);
-  EXPECT_EQ(expr.lhs->op, BinOp::ADD);
+  EXPECT_EQ(expr.lhs->op, Op::ADD);
   EXPECT_TRUE(atom_is_int(*expr.lhs->lhs, 1));
   EXPECT_TRUE(atom_is_int(*expr.lhs->rhs, 2));
 }
@@ -100,17 +100,17 @@ TEST(Parser, MixedPrecedenceChain) {
   auto prog = parse_string("let x = 1 * 2 + 3 * 4;");
   const auto &expr = get_decl_expr(prog, 0);
 
-  EXPECT_EQ(expr.op, BinOp::ADD);
+  EXPECT_EQ(expr.op, Op::ADD);
   ASSERT_NE(expr.lhs, nullptr);
   ASSERT_NE(expr.rhs, nullptr);
-  EXPECT_EQ(expr.lhs->op, BinOp::MUL);
-  EXPECT_EQ(expr.rhs->op, BinOp::MUL);
+  EXPECT_EQ(expr.lhs->op, Op::MUL);
+  EXPECT_EQ(expr.rhs->op, Op::MUL);
 }
 
 
 TEST(E2E, LiteralExit)    { EXPECT_EQ(run_program("exit 42;"), 42); }
 TEST(E2E, ZeroExit)       { EXPECT_EQ(run_program("exit 0;"), 0); }
-                          
+
 TEST(E2E, Addition)       { EXPECT_EQ(run_program("exit 2 + 3;"), 5); }
 TEST(E2E, Subtraction)    { EXPECT_EQ(run_program("exit 10 - 3;"), 7); }
 TEST(E2E, Multiplication) { EXPECT_EQ(run_program("exit 3 * 4;"), 12); }

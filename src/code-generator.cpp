@@ -46,13 +46,13 @@ size_t CodeGenerator::get_count_vars(const NodeScope& node) {
                 break;
             }
             case NodeType::STMT_EXIT: {
-                if (const auto& expr = std::get_if<NodeExpr>( 
-                    &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node 
+                if (const auto& expr = std::get_if<NodeExpr>(
+                    &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node
                 )) {
                     var_cnt += expr->var_count;
                 }
-                else if ( std::get_if<NodeIdentifier>( 
-                    &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node 
+                else if ( std::get_if<NodeIdentifier>(
+                    &std::get<NodeStmtExit>(stmt->m_node).exit_code->m_node
                 )) { var_cnt++; }
                 break;
             }
@@ -139,7 +139,7 @@ void CodeGenerator::emit_epilogue(std::ostream& buf) {
 void CodeGenerator::emit_decl(const NodeVarDeclaration& node, std::ostream& buf) {
     const auto& [kind, ident, val, loc] = node;
     const auto& expr = std::get<NodeExpr>(val->m_node);
-    NodeExpr e2send = expr.op == Op::EQ ? std::move(*expr.rhs) 
+    NodeExpr e2send = expr.op == Op::EQ ? std::move(*expr.rhs)
                                         : std::move(std::get<NodeExpr>(val->m_node));
 
     if (m_cached_var.contains(ident.name)) {
@@ -178,7 +178,7 @@ void CodeGenerator::emit_stmt_exit(const NodeStmtExit& node, std::ostream& buf) 
             }
             buf << std::format("\tLDR x0, [{}, {}]\n", id ? get_reg(id->name) : "x29", temp);
         } else {
-            buf << std::format("\tLDR x0, [x29, {}]\n", stack_loc); 
+            buf << std::format("\tLDR x0, [x29, {}]\n", stack_loc);
         }
     }
 
@@ -192,7 +192,7 @@ void CodeGenerator::emit_stmt_if(const NodeStmtIf& node, const std::string& lbl_
 {
     const auto [stack_loc, temp] = emit_expr(std::get<NodeExpr>( node.cond->m_node ),
                                             std::nullopt, false, buf);
-    if (stack_loc != temp) buf << std::format("\tLDR x8, [x29, {}]\n", temp); 
+    if (stack_loc != temp) buf << std::format("\tLDR x8, [x29, {}]\n", temp);
     else buf << std::format("\tLDR x8, [x29, {}]\n", stack_loc);
 
     buf << std::format("\tCMP x8, 0\n"); // anything nonzero is truthy
